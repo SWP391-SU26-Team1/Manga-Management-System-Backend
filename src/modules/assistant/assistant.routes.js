@@ -1,0 +1,51 @@
+const express = require('express');
+const router = express.Router();
+const { authenticateToken } = require('../../middlewares/auth.middleware');
+const { requireRole } = require('../../middlewares/role.middleware');
+const { validate } = require('../../middlewares/validate.middleware');
+const { z } = require('zod');
+const ctrl = require('./assistant.controller');
+
+const uuid = z.string().uuid();
+
+router.use(authenticateToken);
+router.use(requireRole(['assistant', 'admin']));
+
+// Tasks
+router.get('/page-tasks', ctrl.listMyTasks);
+router.get('/page-tasks/:taskId', validate(z.object({ params: z.object({ taskId: uuid }) })), ctrl.getTaskById);
+router.get('/page-tasks/:taskId/detail', validate(z.object({ params: z.object({ taskId: uuid }) })), ctrl.getTaskDetail);
+router.patch('/page-tasks/:taskId/start', validate(z.object({ params: z.object({ taskId: uuid }) })), ctrl.taskWorkflow('start'));
+router.patch('/page-tasks/:taskId/submit', validate(z.object({ params: z.object({ taskId: uuid }), body: z.object({ content: z.string().optional() }) })), ctrl.taskWorkflow('submit'));
+router.patch('/page-tasks/:taskId/resubmit', validate(z.object({ params: z.object({ taskId: uuid }), body: z.object({ content: z.string().optional() }) })), ctrl.taskWorkflow('resubmit'));
+router.patch('/page-tasks/:taskId/hold', validate(z.object({ params: z.object({ taskId: uuid }) })), ctrl.taskWorkflow('hold'));
+
+// Feedbacks
+router.get('/page-tasks/:taskId/feedbacks', ctrl.listTaskFeedbacks);
+router.post('/page-tasks/:taskId/feedbacks', validate(z.object({ params: z.object({ taskId: uuid }), body: z.object({ content: z.string().min(1), feedback_type: z.string().optional(), status: z.string().optional() }) })), ctrl.createTaskFeedback);
+
+// Annotations
+router.get('/page-tasks/:taskId/annotations', ctrl.listTaskAnnotations);
+router.get('/pages/:pageId/annotations', ctrl.listPageAnnotations);
+router.get('/page-regions/:regionId/annotations', ctrl.listRegionAnnotations);
+
+// Manuscript files
+router.get('/manuscripts/:manuscriptId/files', ctrl.listManuscriptFiles);
+router.post('/manuscripts/:manuscriptId/files', validate(z.object({ params: z.object({ manuscriptId: uuid }), body: z.object({ file_url: z.string().url(), file_name: z.string().min(1), file_type: z.string().optional(), description: z.string().optional() }) })), ctrl.addManuscriptFile);
+router.post('/manuscripts/:manuscriptId/files/bulk', validate(z.object({ params: z.object({ manuscriptId: uuid }), body: z.object({ files: z.array(z.object({ file_url: z.string().url(), file_name: z.string().min(1) })).min(1) }) })), ctrl.bulkAddManuscriptFiles);
+
+// Dashboard & Performance
+router.get('/dashboard/overview', ctrl.dashboardOverview);
+router.get('/dashboard/performance', ctrl.dashboardPerformance);
+router.get('/performance/breakdown', ctrl.performanceBreakdown);
+router.get('/performance/by-series', ctrl.performanceBySeries);
+router.get('/performance/by-chapter', ctrl.performanceByChapter);
+
+// Notifications
+router.get('/notifications', ctrl.listNotifications);
+router.get('/notifications/unread', ctrl.getUnreadNotifications);
+router.patch('/notifications/read-all', ctrl.markAllRead);
+router.patch('/notifications/:notificationId/read', ctrl.markNotificationRead);
+router.delete('/notifications/:notificationId', ctrl.deleteNotification);
+
+module.exports = router;
