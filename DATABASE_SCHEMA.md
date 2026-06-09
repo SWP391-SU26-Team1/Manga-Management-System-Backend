@@ -137,7 +137,7 @@ Unique constraints: `UNIQUE (chapter_id, page_number)`
 
 Indexes: `idx_page_chapter_id`
 
-Referenced by: `page_region.page_id`, `page_task.page_id`, `annotation.page_id`
+Referenced by: `page_region.page_id`, `page_task.page_id`, `annotation.page_id`, `page_version.page_id`, `page_submission.page_id`
 
 ### page_region
 
@@ -184,7 +184,60 @@ Status values: `pending`, `assigned`, `in_progress`, `submitted`, `review`, `app
 
 Indexes: `idx_page_task_page_id`, `idx_page_task_region_id`, `idx_page_task_assistant_id`, `idx_page_task_assigned_by_id`, `idx_page_task_status`
 
-Referenced by: `page_task_feedback.task_id`, `annotation.task_id`
+Referenced by: `page_submission.task_id`, `annotation.task_id`
+
+### page_version
+
+Primary key: `version_id`
+
+Columns:
+
+| Column | Type | Required | Default | Notes |
+| --- | --- | --- | --- | --- |
+| `version_id` | UUID | yes | `gen_random_uuid()` | PK |
+| `page_id` | UUID | yes | | FK to `page.page_id`, cascade delete |
+| `image_url` | TEXT | yes | | Cloudinary secure_url |
+| `version_number` | INT | yes | | Auto-calculated by backend: MAX+1 per page |
+| `version_type` | VARCHAR(50) | yes | `submitted` | check constraint |
+| `created_at` | TIMESTAMP | no | `CURRENT_TIMESTAMP` | |
+
+Version type values: `original`, `submitted`, `approved`
+
+Rules:
+- Version 1 (`original`) is created when a page is first created by mangaka.
+- Each assistant submission creates a new version (`submitted`). Backend auto-calculates `version_number = MAX(version_number)+1 WHERE page_id`.
+- On reviewer approve, the version is updated to `approved`.
+
+Unique constraints: `UNIQUE (page_id, version_number)`
+
+Indexes: `idx_page_version_page_id`
+
+Referenced by: `page_submission.version_number` (logical, not FK)
+
+### page_submission
+
+Primary key: `submission_id`
+
+Columns:
+
+| Column | Type | Required | Default | Notes |
+| --- | --- | --- | --- | --- |
+| `submission_id` | UUID | yes | `gen_random_uuid()` | PK |
+| `page_id` | UUID | yes | | FK to `page.page_id`, cascade delete |
+| `task_id` | UUID | yes | | FK to `page_task.task_id`, cascade delete |
+| `assistant_id` | UUID | yes | | FK to `users.user_id` (`fk_page_submission_assistant`), set null |
+| `file_url` | TEXT | yes | | Cloudinary secure_url of the submitted image |
+| `version_number` | INT | yes | | Matches `page_version.version_number` for this page |
+| `submission_status` | VARCHAR(50) | yes | `pending` | check constraint |
+| `submission_notes` | TEXT | no | | Assistant's notes when submitting |
+| `submitted_at` | TIMESTAMP | no | `CURRENT_TIMESTAMP` | |
+| `reviewed_at` | TIMESTAMP | no | | Set when reviewer acts |
+
+Submission status values: `pending`, `approved`, `rejected`, `needs_revision`
+
+Indexes: `idx_page_submission_task_id`, `idx_page_submission_assistant_id`, `idx_page_submission_status`
+
+Referenced by: `page_task_feedback.submission_id`
 
 ### page_task_feedback
 
@@ -195,16 +248,18 @@ Columns:
 | Column | Type | Required | Default | Notes |
 | --- | --- | --- | --- | --- |
 | `feedback_id` | UUID | yes | `gen_random_uuid()` | PK |
-| `task_id` | UUID | yes | | FK to `page_task.task_id`, cascade delete |
-| `mangaka_id` | UUID | no | | FK to `users.user_id`, set null |
-| `assistant_id` | UUID | no | | FK to `users.user_id`, set null |
-| `content` | TEXT | no | | |
+| `submission_id` | UUID | yes | | FK to `page_submission.submission_id`, cascade delete |
+| `mangaka_id` | UUID | no | | FK to `users.user_id` (`fk_feedback_mangaka`), set null |
+| `assistant_id` | UUID | no | | FK to `users.user_id` (`fk_feedback_assistant`), set null |
+| `content` | TEXT | yes | | |
 | `created_at` | TIMESTAMP | no | `CURRENT_TIMESTAMP` | |
-| `status` | VARCHAR(50) | yes | `pending` | added by migration |
 
-Status values: `pending`, `acknowledged`, `resolved`, `archived`
+Notes:
+- `task_id` column was removed — feedback is now scoped to a `submission_id`, not a task.
+- `status` column removed — feedback is a simple note, no workflow needed.
+- Auto-created by backend when reviewer calls `request-revision`.
 
-Indexes: `idx_page_task_feedback_task_id`, `idx_page_task_feedback_mangaka_id`, `idx_page_task_feedback_assistant_id`
+Indexes: `idx_page_task_feedback_submission_id`, `idx_page_task_feedback_mangaka_id`, `idx_page_task_feedback_assistant_id`
 
 ### annotation
 
@@ -394,7 +449,8 @@ const SERIES_STATUS = ['draft', 'pending_review', 'approved', 'rejected', 'publi
 const CHAPTER_STATUS = ['draft', 'pending_review', 'approved', 'rejected', 'published', 'archived', 'hidden', 'banned', 'deleted'];
 const PAGE_STATUS = ['draft', 'in_progress', 'review', 'completed', 'published', 'archived', 'hidden', 'banned', 'deleted'];
 const PAGE_TASK_STATUS = ['pending', 'assigned', 'in_progress', 'submitted', 'review', 'approved', 'needs_revision', 'completed', 'on_hold', 'cancelled', 'rejected'];
-const PAGE_TASK_FEEDBACK_STATUS = ['pending', 'acknowledged', 'resolved', 'archived'];
+const PAGE_VERSION_TYPE = ['original', 'submitted', 'approved'];
+const PAGE_SUBMISSION_STATUS = ['pending', 'approved', 'rejected', 'needs_revision'];
 const ANNOTATION_STATUS = ['active', 'resolved', 'closed', 'archived'];
 const REVIEW_SESSION_STATUS = ['pending', 'in_progress', 'completed', 'finished', 'paused', 'cancelled'];
 const VOTE_STATUS = ['submitted', 'verified'];
@@ -405,7 +461,7 @@ const RANKING_PERIOD_STATUS = ['pending', 'calculating', 'completed', 'archived'
 
 ## Supabase Relationship Notes
 
-Use table names exactly as defined: `users`, `notification`, `series`, `series_member`, `chapter`, `page`, `page_region`, `page_task`, `page_task_feedback`, `annotation`, `review_session`, `vote`, `ranking_period`, `series_ranking`, `chapter_ranking`, `manuscript`, `manuscript_file`.
+Use table names exactly as defined: `users`, `notification`, `series`, `series_member`, `chapter`, `page`, `page_region`, `page_task`, `page_version`, `page_submission`, `page_task_feedback`, `annotation`, `review_session`, `vote`, `ranking_period`, `series_ranking`, `chapter_ranking`, `manuscript`, `manuscript_file`.
 
 Important foreign key constraint names for joined selects:
 
@@ -421,7 +477,11 @@ Important foreign key constraint names for joined selects:
 | `page_task` | `assigned_by_id` | `fk_page_task_assigned_by` | `users.user_id` |
 | `page_task` | `region_id` | `fk_page_task_region` | `page_region.region_id` |
 | `page_task` | `assistant_id` | `fk_page_task_assistant` | `users.user_id` |
-| `page_task_feedback` | `task_id` | `fk_feedback_task` | `page_task.task_id` |
+| `page_version` | `page_id` | `fk_page_version_page` | `page.page_id` |
+| `page_submission` | `page_id` | `fk_page_submission_page` | `page.page_id` |
+| `page_submission` | `task_id` | `fk_page_submission_task` | `page_task.task_id` |
+| `page_submission` | `assistant_id` | `fk_page_submission_assistant` | `users.user_id` |
+| `page_task_feedback` | `submission_id` | `fk_feedback_submission` | `page_submission.submission_id` |
 | `page_task_feedback` | `mangaka_id` | `fk_feedback_mangaka` | `users.user_id` |
 | `page_task_feedback` | `assistant_id` | `fk_feedback_assistant` | `users.user_id` |
 | `annotation` | `page_id` | `fk_annotation_page` | `page.page_id` |

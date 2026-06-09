@@ -5,7 +5,7 @@ const AppError = require('../../utils/appError');
 const listNotifications = async (req, res, next) => {
   try {
     // Non-admin can only see their own notifications
-    const userId = req.user.role === 'admin' ? req.params.userId : req.user.id;
+    const userId = req.user.role === 'admin' ? req.params.userId : req.user.user_id;
     const isRead = req.query.is_read !== undefined ? req.query.is_read === 'true' : undefined;
     const data = await service.listNotifications({ userId, isRead });
     return sendSuccess(res, 200, data, 'Success');
@@ -15,7 +15,7 @@ const listNotifications = async (req, res, next) => {
 const getNotificationById = async (req, res, next) => {
   try {
     const data = await service.getNotificationById(req.params.notificationId);
-    if (req.user.role !== 'admin' && data.user_id !== req.user.id) {
+    if (req.user.role !== 'admin' && data.user_id !== req.user.user_id) {
       return next(new AppError('Forbidden: access denied', 403));
     }
     return sendSuccess(res, 200, data, 'Success');
@@ -32,7 +32,7 @@ const createNotification = async (req, res, next) => {
 const updateNotification = async (req, res, next) => {
   try {
     const n = await service.getNotificationById(req.params.notificationId);
-    if (req.user.role !== 'admin' && n.user_id !== req.user.id) {
+    if (req.user.role !== 'admin' && n.user_id !== req.user.user_id) {
       return next(new AppError('Forbidden: access denied', 403));
     }
     const data = await service.updateNotification(req.params.notificationId, req.body);
@@ -43,7 +43,7 @@ const updateNotification = async (req, res, next) => {
 const markAsRead = async (req, res, next) => {
   try {
     const n = await service.getNotificationById(req.params.notificationId);
-    if (req.user.role !== 'admin' && n.user_id !== req.user.id) {
+    if (req.user.role !== 'admin' && n.user_id !== req.user.user_id) {
       return next(new AppError('Forbidden: access denied', 403));
     }
     const data = await service.markAsRead(req.params.notificationId);
@@ -54,7 +54,7 @@ const markAsRead = async (req, res, next) => {
 const markAllRead = async (req, res, next) => {
   try {
     // Users can only mark their own notifications as read
-    const userId = req.user.role === 'admin' ? req.params.userId : req.user.id;
+    const userId = req.user.role === 'admin' ? req.params.userId : req.user.user_id;
     await service.markAllRead(userId);
     return sendSuccess(res, 200, null, 'All notifications marked as read');
   } catch (error) { next(error); }
@@ -63,7 +63,7 @@ const markAllRead = async (req, res, next) => {
 const deleteNotification = async (req, res, next) => {
   try {
     const n = await service.getNotificationById(req.params.notificationId);
-    if (req.user.role !== 'admin' && n.user_id !== req.user.id) {
+    if (req.user.role !== 'admin' && n.user_id !== req.user.user_id) {
       return next(new AppError('Forbidden: access denied', 403));
     }
     await service.deleteNotification(req.params.notificationId);

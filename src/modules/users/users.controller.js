@@ -21,7 +21,7 @@ const listUsers = async (req, res, next) => {
 
 const getUserById = async (req, res, next) => {
   try {
-    if (req.user.role !== 'admin' && req.user.id !== req.params.userId) {
+    if (req.user.role !== 'admin' && req.user.user_id !== req.params.userId) {
       return next(new AppError('Forbidden: access denied', 403));
     }
     const data = await usersService.getUserById(req.params.userId);
@@ -42,7 +42,7 @@ const createUser = async (req, res, next) => {
 
 const updateUser = async (req, res, next) => {
   try {
-    if (req.user.role !== 'admin' && req.user.id !== req.params.userId) {
+    if (req.user.role !== 'admin' && req.user.user_id !== req.params.userId) {
       return next(new AppError('Forbidden: access denied', 403));
     }
     // Non-admin cannot escalate their own role

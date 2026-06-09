@@ -20,9 +20,14 @@ router.patch('/page-tasks/:taskId/submit', validate(z.object({ params: z.object(
 router.patch('/page-tasks/:taskId/resubmit', validate(z.object({ params: z.object({ taskId: uuid }), body: z.object({ content: z.string().optional() }) })), ctrl.taskWorkflow('resubmit'));
 router.patch('/page-tasks/:taskId/hold', validate(z.object({ params: z.object({ taskId: uuid }) })), ctrl.taskWorkflow('hold'));
 
-// Feedbacks
-router.get('/page-tasks/:taskId/feedbacks', ctrl.listTaskFeedbacks);
-router.post('/page-tasks/:taskId/feedbacks', validate(z.object({ params: z.object({ taskId: uuid }), body: z.object({ content: z.string().min(1), feedback_type: z.string().optional(), status: z.string().optional() }) })), ctrl.createTaskFeedback);
+// Submissions
+router.post('/page-tasks/:taskId/submissions', validate(z.object({ params: z.object({ taskId: uuid }), body: z.object({ file_url: z.string().url(), submission_notes: z.string().optional() }) })), ctrl.createSubmission);
+router.get('/page-tasks/:taskId/submissions', validate(z.object({ params: z.object({ taskId: uuid }) })), ctrl.listTaskSubmissions);
+router.get('/page-submissions/:submissionId', validate(z.object({ params: z.object({ submissionId: uuid }) })), ctrl.getSubmissionById);
+
+// Feedbacks (submission-scoped)
+router.get('/page-submissions/:submissionId/feedbacks', validate(z.object({ params: z.object({ submissionId: uuid }) })), ctrl.listSubmissionFeedbacks);
+router.post('/page-submissions/:submissionId/feedbacks', validate(z.object({ params: z.object({ submissionId: uuid }), body: z.object({ content: z.string().min(1) }) })), ctrl.createSubmissionFeedback);
 
 // Annotations
 router.get('/page-tasks/:taskId/annotations', ctrl.listTaskAnnotations);

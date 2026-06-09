@@ -13,3 +13,7 @@ yarn-error.log*
 .vscode/
 *.swp
 *.swo
+
+# Test output & coverage
+tests/
+coverage/

@@ -1,6 +1,7 @@
 const taskService = require('./assistantTasks.service');
 const perfService = require('./assistantPerformance.service');
 const pageTaskFeedbacksRepo = require('../pageTaskFeedbacks/pageTaskFeedbacks.repository');
+const submissionsService = require('../pageSubmissions/pageSubmissions.service');
 const manuscriptFilesRepo = require('../manuscriptFiles/manuscriptFiles.repository');
 const { createNotification } = require('../../utils/notification.helper');
 const { sendSuccess } = require('../../utils/response');
@@ -39,29 +40,59 @@ const taskWorkflow = (action) => async (req, res, next) => {
   } catch (e) { next(e); }
 };
 
-// --- Feedbacks ---
-const listTaskFeedbacks = async (req, res, next) => {
+// --- Submissions ---
+const createSubmission = async (req, res, next) => {
   try {
-    await taskService.getMyTaskById(req.user.user_id, req.params.taskId);
-    const data = await pageTaskFeedbacksRepo.findByTaskId(req.params.taskId);
+    const data = await submissionsService.submitTask(
+      req.user.user_id,
+      req.params.taskId,
+      req.body
+    );
+    return sendSuccess(res, 201, data, 'Submission created');
+  } catch (e) { next(e); }
+};
+
+const listTaskSubmissions = async (req, res, next) => {
+  try {
+    const data = await submissionsService.listSubmissions(req.params.taskId, req.user.user_id);
     return sendSuccess(res, 200, data, 'Success');
   } catch (e) { next(e); }
 };
 
-const createTaskFeedback = async (req, res, next) => {
+const getSubmissionById = async (req, res, next) => {
   try {
-    const task = await taskService.getMyTaskById(req.user.user_id, req.params.taskId);
-    const data = await pageTaskFeedbacksRepo.create({
-      task_id: req.params.taskId,
-      mangaka_id: task.assigned_by,
-      assistant_id: req.user.user_id,
-      feedback_content: req.body.content,
-      feedback_type: req.body.feedback_type || 'assistant_note',
-      status: req.body.status || 'pending',
-    });
-    if (task.assigned_by) {
-      await createNotification(task.assigned_by, 'Assistant replied to feedback', `Assistant responded on task feedback.`, 'feedback_reply');
+    const submission = await submissionsService.getSubmissionById(req.params.submissionId);
+    if (submission.assistant_id !== req.user.user_id && req.user.role !== 'admin') {
+      return next(new AppError('Forbidden: not your submission', 403));
     }
+    return sendSuccess(res, 200, submission, 'Success');
+  } catch (e) { next(e); }
+};
+
+// --- Feedbacks (now submission-scoped) ---
+const listSubmissionFeedbacks = async (req, res, next) => {
+  try {
+    const submission = await submissionsService.getSubmissionById(req.params.submissionId);
+    if (submission.assistant_id !== req.user.user_id && req.user.role !== 'admin') {
+      return next(new AppError('Forbidden: not your submission', 403));
+    }
+    const data = await pageTaskFeedbacksRepo.findBySubmissionId(req.params.submissionId);
+    return sendSuccess(res, 200, data, 'Success');
+  } catch (e) { next(e); }
+};
+
+const createSubmissionFeedback = async (req, res, next) => {
+  try {
+    const submission = await submissionsService.getSubmissionById(req.params.submissionId);
+    if (submission.assistant_id !== req.user.user_id && req.user.role !== 'admin') {
+      return next(new AppError('Forbidden: not your submission', 403));
+    }
+    const data = await pageTaskFeedbacksRepo.create({
+      submission_id: req.params.submissionId,
+      assistant_id: req.user.user_id,
+      mangaka_id: null,
+      content: req.body.content,
+    });
     return sendSuccess(res, 201, data, 'Feedback created');
   } catch (e) { next(e); }
 };
@@ -201,7 +232,8 @@ const deleteNotification = async (req, res, next) => {
 
 module.exports = {
   listMyTasks, getTaskById, getTaskDetail, taskWorkflow,
-  listTaskFeedbacks, createTaskFeedback,
+  createSubmission, listTaskSubmissions, getSubmissionById,
+  listSubmissionFeedbacks, createSubmissionFeedback,
   listPageAnnotations, listRegionAnnotations, listTaskAnnotations,
   listManuscriptFiles, addManuscriptFile, bulkAddManuscriptFiles,
   dashboardOverview, dashboardPerformance, performanceBreakdown, performanceBySeries, performanceByChapter,

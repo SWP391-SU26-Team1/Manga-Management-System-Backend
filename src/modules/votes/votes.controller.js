@@ -24,7 +24,7 @@ const createVote = async (req, res, next) => {
       ? { ...req.body, session_id: req.params.sessionId }
       : req.body;
     // Bind the authenticated user as the voter
-    const data = await service.createVote({ ...payload, voter_id: req.user.id });
+    const data = await service.createVote({ ...payload, voter_id: req.user.user_id });
     return sendSuccess(res, 201, data, 'Vote created');
   } catch (error) { next(error); }
 };
@@ -32,7 +32,7 @@ const createVote = async (req, res, next) => {
 const updateVote = async (req, res, next) => {
   try {
     const vote = await service.getVoteById(req.params.voteId);
-    if (req.user.role !== 'admin' && vote.voter_id !== req.user.id) {
+    if (req.user.role !== 'admin' && vote.voter_id !== req.user.user_id) {
       return next(new AppError('Forbidden: not your vote', 403));
     }
     const data = await service.updateVote(req.params.voteId, req.body);

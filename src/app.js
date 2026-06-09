@@ -38,6 +38,8 @@ const boardRoutes = require('./modules/board/board.routes');
 const rankingsRoutes2 = require('./modules/rankings/rankings.routes');
 const adminRoutes = require('./modules/admin/admin.routes');
 const internalRoutes = require('./modules/internal/internal.routes');
+const reviewRoutes = require('./modules/review/review.routes');
+const submissionFeedbacksRoutes = require('./modules/review/submissionFeedbacks.routes');
 const { requireInternalSecret } = require('./middlewares/internal.middleware');
 
 const app = express();
@@ -148,6 +150,12 @@ app.use('/api/admin', adminRoutes);
 
 // Public rankings (no auth)
 app.use('/api/public/rankings', rankingsRoutes2);
+
+// Review routes (mangaka, editor, admin)
+app.use('/api/review', reviewRoutes);
+
+// Submission feedbacks (shared by assistant + reviewer)
+app.use('/api/page-submissions/:submissionId/feedbacks', submissionFeedbacksRoutes);
 
 // Internal service routes — protected by shared secret (x-internal-secret header)
 app.use('/api/internal', requireInternalSecret, internalRoutes);
