@@ -1,45 +1,37 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router({ mergeParams: true });
-const { authenticateToken } = require('../../middlewares/auth.middleware');
-const { requireRole } = require('../../middlewares/role.middleware');
-const { validate } = require('../../middlewares/validate.middleware');
-const v = require('./pageTaskFeedbacks.validation');
-const controller = require('./pageTaskFeedbacks.controller');
+const { authenticateToken } = require("../../middlewares/auth.middleware");
+const { requireRole } = require("../../middlewares/role.middleware");
+const { validate } = require("../../middlewares/validate.middleware");
+const v = require("./pageTaskFeedbacks.validation");
+const controller = require("./pageTaskFeedbacks.controller");
 
 /**
  * @swagger
  * /api/page-task-feedbacks:
  *   get:
  *     tags: [Page Task Feedbacks]
- *     summary: List feedbacks (also nested under /api/page-tasks/:taskId/feedbacks)
- *     parameters:
- *       - in: query
- *         name: taskId
- *         schema: { type: string }
- *       - in: query
- *         name: page
- *         schema: { type: integer, default: 1 }
- *       - in: query
- *         name: limit
- *         schema: { type: integer, default: 10 }
+ *     summary: List all feedbacks
  *     responses:
  *       200: { description: List of feedbacks }
  *   post:
  *     tags: [Page Task Feedbacks]
- *     summary: Create feedback on a task
+ *     summary: Create feedback on a submission
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required: [taskId, content]
+ *             required: [submission_id, content]
  *             properties:
- *               taskId: { type: string }
+ *               submission_id: { type: string, format: uuid }
+ *               mangaka_id: { type: string, format: uuid }
+ *               assistant_id: { type: string, format: uuid }
  *               content: { type: string, example: "Please fix the line weight on panel 3" }
- *               rating: { type: integer, minimum: 1, maximum: 5 }
  *     responses:
  *       201: { description: Feedback created }
+ *       404: { description: Submission not found }
  *
  * /api/page-task-feedbacks/{feedbackId}:
  *   get:
@@ -55,7 +47,7 @@ const controller = require('./pageTaskFeedbacks.controller');
  *       404: { description: Not found }
  *   patch:
  *     tags: [Page Task Feedbacks]
- *     summary: Update feedback
+ *     summary: Update feedback content
  *     parameters:
  *       - in: path
  *         name: feedbackId
@@ -69,12 +61,12 @@ const controller = require('./pageTaskFeedbacks.controller');
  *             type: object
  *             properties:
  *               content: { type: string }
- *               rating: { type: integer }
  *     responses:
  *       200: { description: Updated }
+ *       404: { description: Not found }
  *   delete:
  *     tags: [Page Task Feedbacks]
- *     summary: Delete feedback (editor, mangaka, admin)
+ *     summary: Delete feedback
  *     parameters:
  *       - in: path
  *         name: feedbackId
@@ -82,14 +74,26 @@ const controller = require('./pageTaskFeedbacks.controller');
  *         schema: { type: string }
  *     responses:
  *       200: { description: Deleted }
+ *       404: { description: Not found }
  *
- * /api/page-task-feedbacks/{feedbackId}/status:
- *   patch:
+ * /api/page-submissions/{submissionId}/feedbacks:
+ *   get:
  *     tags: [Page Task Feedbacks]
- *     summary: Update feedback status (editor, mangaka, admin)
+ *     summary: Get feedbacks for a submission
  *     parameters:
  *       - in: path
- *         name: feedbackId
+ *         name: submissionId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: List of feedbacks }
+ *       404: { description: Submission not found }
+ *   post:
+ *     tags: [Page Task Feedbacks]
+ *     summary: Create feedback on a submission
+ *     parameters:
+ *       - in: path
+ *         name: submissionId
  *         required: true
  *         schema: { type: string }
  *     requestBody:
@@ -98,17 +102,53 @@ const controller = require('./pageTaskFeedbacks.controller');
  *         application/json:
  *           schema:
  *             type: object
- *             required: [status]
+ *             required: [content]
  *             properties:
- *               status: { type: string, enum: [open, resolved, dismissed] }
+ *               mangaka_id: { type: string, format: uuid }
+ *               assistant_id: { type: string, format: uuid }
+ *               content: { type: string }
  *     responses:
- *       200: { description: Status updated }
+ *       201: { description: Feedback created }
+ *       404: { description: Submission not found }
  */
-router.get('/', authenticateToken, controller.listFeedbacks);
-router.get('/:feedbackId', authenticateToken, validate(v.feedbackIdParamSchema), controller.getFeedbackById);
-router.post('/', authenticateToken, validate(v.createFeedbackSchema), controller.createFeedback);
-router.patch('/:feedbackId', authenticateToken, validate(v.updateFeedbackSchema), controller.updateFeedback);
-router.patch('/:feedbackId/status', authenticateToken, requireRole(['admin', 'editor', 'mangaka']), validate(v.updateFeedbackStatusSchema), controller.updateFeedbackStatus);
-router.delete('/:feedbackId', authenticateToken, requireRole(['admin', 'editor', 'mangaka']), validate(v.feedbackIdParamSchema), controller.deleteFeedback);
+router.get("/", authenticateToken, controller.listFeedbacks);
+router.get(
+  "/:feedbackId",
+  authenticateToken,
+  validate(v.feedbackIdParamSchema),
+  controller.getFeedbackById,
+);
+router.post(
+  "/",
+  authenticateToken,
+  validate(v.createFeedbackSchema),
+  controller.createFeedback,
+);
+router.patch(
+  "/:feedbackId",
+  authenticateToken,
+  validate(v.updateFeedbackSchema),
+  controller.updateFeedback,
+);
+router.delete(
+  "/:feedbackId",
+  authenticateToken,
+  validate(v.feedbackIdParamSchema),
+  controller.deleteFeedback,
+);
+
+// Nested routes for submissions
+router.get(
+  "/submission/:submissionId",
+  authenticateToken,
+  validate(v.submissionIdParamSchema),
+  controller.getFeedbacksBySubmission,
+);
+router.post(
+  "/submission/:submissionId",
+  authenticateToken,
+  validate(v.createFeedbackSchema),
+  controller.createFeedback,
+);
 
 module.exports = router;
