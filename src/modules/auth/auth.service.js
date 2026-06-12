@@ -3,9 +3,17 @@ const jwt = require('jsonwebtoken');
 const usersRepo = require('../users/users.repository');
 const AppError = require('../../utils/appError');
 
+// Tạo payload token chỉ gồm thông tin cần thiết.
+// Không nên để quá nhiều dữ liệu nhạy cảm vào token.
+const createTokenPayload = (user) => ({
+  user_id: user.user_id,
+  email: user.email,
+  role: user.role,
+});
+
 const signToken = (user) =>
   jwt.sign(
-    { user_id: user.user_id, email: user.email, role: user.role },
+    createTokenPayload(user),
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
   );
@@ -38,11 +46,12 @@ const register = async ({ username, email, password, name, role }) => {
 
 // Đăng nhập bằng Email - Kiểm tra mật khẩu trước, sau đó mới kiểm tra trạng thái
 const login = async ({ email, password }) => {
-  // Bước 1: Tìm user
+  // Bước 1: Tìm user trong database theo email.
+  // Nếu không tìm thấy thì không thể đăng nhập.
   const user = await usersRepo.findByEmail(email);
 
-  // Bước 2: Kiểm tra mật khẩu - PHẢI LÀM TRƯỚC (An toàn bảo mật)
-  // Nếu user không tồn tại hoặc sai mật khẩu, trả về lỗi chung
+  // Bước 2: Nếu user tồn tại thì so sánh mật khẩu.
+  // Đây là bước quan trọng vì mật khẩu trên database là hash, không phải text.
   if (!user) {
     throw new AppError('Invalid email or password', 401);
   }
