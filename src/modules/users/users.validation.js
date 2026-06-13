@@ -38,6 +38,11 @@ const updateUserStatusSchema = z.object({
   body: z.object({ status: z.enum(USER_STATUS) }),
 });
 
+const updateUserRoleSchema = z.object({
+  params: z.object({ userId: uuidParam }),
+  body: z.object({ role: z.enum(USER_ROLES) }),
+});
+
 const userIdParamSchema = z.object({
   params: z.object({ userId: uuidParam }),
 });
@@ -58,6 +63,7 @@ module.exports = {
   createUserSchema,
   updateUserSchema,
   updateUserStatusSchema,
+  updateUserRoleSchema,
   userIdParamSchema,
   listUsersSchema,
 };

@@ -18,16 +18,30 @@ const updateFeedbackSchema = z.object({
   }),
 });
 
+const updateFeedbackStatusSchema = z.object({
+  params: z.object({ feedbackId: uuidParam }),
+  body: z.object({ status: z.string().min(1) }),
+});
+
 const feedbackIdParamSchema = z.object({
   params: z.object({ feedbackId: uuidParam }),
 });
 const submissionIdParamSchema = z.object({
   params: z.object({ submissionId: uuidParam }),
 });
+const listFeedbacksSchema = z.object({
+  query: z.object({
+    page: z.string().optional(),
+    limit: z.string().optional(),
+    status: z.string().optional(),
+  }),
+});
 
 module.exports = {
   createFeedbackSchema,
   updateFeedbackSchema,
+  updateFeedbackStatusSchema,
   feedbackIdParamSchema,
   submissionIdParamSchema,
+  listFeedbacksSchema,
 };
