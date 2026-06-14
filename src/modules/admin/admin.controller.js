@@ -10,6 +10,7 @@ const annotationsRepo = require('../annotations/annotations.repository');
 const reviewSessionsRepo = require('../reviewSessions/reviewSessions.repository');
 const votesRepo = require('../votes/votes.repository');
 const rankingPeriodsRepo = require('../rankingPeriods/rankingPeriods.repository');
+const pageRegionsRepo = require('../pageRegions/pageRegions.repository');
 const { sendSuccess } = require('../../utils/response');
 const { parsePagination, buildPaginationMeta } = require('../../utils/pagination');
 const supabase = require('../../config/supabase');
@@ -321,6 +322,200 @@ const importFullSystem = async (req, res, next) => {
   } catch (e) { next(e); }
 };
 
+// --- Activity Logs ---
+const getActivityLogs = async (req, res, next) => {
+  try {
+    const { page, limit, offset } = parsePagination(req.query);
+    const { user_id, action, from, to } = req.query;
+    let query = supabase
+      .from('activity_log')
+      .select('*', { count: 'exact' });
+    if (user_id) query = query.eq('user_id', user_id);
+    if (action) query = query.eq('action', action);
+    if (from) query = query.gte('created_at', from);
+    if (to) query = query.lte('created_at', to);
+    query = query.order('created_at', { ascending: false }).range(offset, offset + limit - 1);
+    const { data, error, count } = await query;
+    if (error) throw error;
+    return res.status(200).json({ success: true, message: 'Success', data, pagination: buildPaginationMeta(page, limit, count) });
+  } catch (e) { next(e); }
+};
+
+// --- Global Search ---
+const globalSearch = async (req, res, next) => {
+  try {
+    const { keyword } = req.query;
+    if (!keyword || keyword.trim().length < 2) {
+      return next(new AppError('keyword must be at least 2 characters', 400));
+    }
+    const kw = keyword.trim();
+    const [usersRes, seriesRes, chaptersRes] = await Promise.all([
+      supabase.from('users').select('user_id,username,email,role,status').or(`username.ilike.%${kw}%,email.ilike.%${kw}%`).limit(10),
+      supabase.from('series').select('series_id,title,status').ilike('title', `%${kw}%`).limit(10),
+      supabase.from('chapter').select('chapter_id,title,chapter_number,status').ilike('title', `%${kw}%`).limit(10),
+    ]);
+    if (usersRes.error) throw usersRes.error;
+    if (seriesRes.error) throw seriesRes.error;
+    if (chaptersRes.error) throw chaptersRes.error;
+    return sendSuccess(res, 200, {
+      users: usersRes.data,
+      series: seriesRes.data,
+      chapters: chaptersRes.data,
+    }, 'Search results');
+  } catch (e) { next(e); }
+};
+
+// --- Storage Usage ---
+const getStorageUsage = async (req, res, next) => {
+  try {
+    const [filesRes, versionsRes] = await Promise.all([
+      supabase.from('manuscript_file').select('file_id', { count: 'exact' }),
+      supabase.from('page_version').select('version_id', { count: 'exact' }),
+    ]);
+    if (filesRes.error) throw filesRes.error;
+    if (versionsRes.error) throw versionsRes.error;
+    return sendSuccess(res, 200, {
+      manuscript_files: { count: filesRes.count },
+      page_versions: { count: versionsRes.count },
+    }, 'Storage usage');
+  } catch (e) { next(e); }
+};
+
+// --- Trust Scores ---
+const getTrustScores = async (req, res, next) => {
+  try {
+    const { page, limit, offset } = parsePagination(req.query);
+    const { role } = req.query;
+    let query = supabase
+      .from('users')
+      .select('user_id,username,email,role,status', { count: 'exact' })
+      .in('role', role ? [role] : ['mangaka', 'assistant']);
+    query = query.order('created_at', { ascending: false }).range(offset, offset + limit - 1);
+    const { data: users, error, count } = await query;
+    if (error) throw error;
+
+    const userIds = users.map((u) => u.user_id);
+    const [tasksRes, feedbacksRes] = await Promise.all([
+      supabase.from('page_task').select('assistant_id,status').in('assistant_id', userIds),
+      supabase.from('page_task_feedback').select('assistant_id').in('assistant_id', userIds),
+    ]);
+
+    const taskMap = {};
+    (tasksRes.data || []).forEach((t) => {
+      if (!taskMap[t.assistant_id]) taskMap[t.assistant_id] = { total: 0, completed: 0 };
+      taskMap[t.assistant_id].total++;
+      if (t.status === 'completed') taskMap[t.assistant_id].completed++;
+    });
+    const feedbackCount = {};
+    (feedbacksRes.data || []).forEach((f) => {
+      feedbackCount[f.assistant_id] = (feedbackCount[f.assistant_id] || 0) + 1;
+    });
+
+    const result = users.map((u) => {
+      const stats = taskMap[u.user_id] || { total: 0, completed: 0 };
+      const completionRate = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
+      const feedbacks = feedbackCount[u.user_id] || 0;
+      // Trust score: 70% completion rate + 30% based on low feedback count (max 10)
+      const trustScore = Math.round(completionRate * 0.7 + Math.max(0, 10 - feedbacks) * 3);
+      return { ...u, tasks_total: stats.total, tasks_completed: stats.completed, completion_rate: completionRate, feedback_count: feedbacks, trust_score: trustScore };
+    });
+
+    return res.status(200).json({ success: true, message: 'Success', data: result, pagination: buildPaginationMeta(page, limit, count) });
+  } catch (e) { next(e); }
+};
+
+// --- System Health ---
+const getSystemHealth = async (req, res, next) => {
+  try {
+    const start = Date.now();
+    const { error } = await supabase.from('users').select('user_id').limit(1);
+    const dbLatencyMs = Date.now() - start;
+    if (error) throw error;
+
+    const [usersRes, seriesRes, tasksRes] = await Promise.all([
+      supabase.from('users').select('user_id', { count: 'exact' }).limit(0),
+      supabase.from('series').select('series_id', { count: 'exact' }).limit(0),
+      supabase.from('page_task').select('task_id', { count: 'exact' }).limit(0),
+    ]);
+
+    return sendSuccess(res, 200, {
+      status: 'ok',
+      db_latency_ms: dbLatencyMs,
+      counts: {
+        users: usersRes.count,
+        series: seriesRes.count,
+        tasks: tasksRes.count,
+      },
+      timestamp: new Date().toISOString(),
+    }, 'System healthy');
+  } catch (e) {
+    return res.status(503).json({ success: false, message: 'System unhealthy', error: e.message });
+  }
+};
+
+// --- Retry OCR ---
+const retryOcr = async (req, res, next) => {
+  try {
+    const { pageId } = req.params;
+    const { data: page, error: pageError } = await supabase
+      .from('page')
+      .select('page_id,status')
+      .eq('page_id', pageId)
+      .maybeSingle();
+    if (pageError) throw pageError;
+    if (!page) return next(new AppError('Page not found', 404));
+
+    // Mark page for OCR retry by updating metadata
+    const { data, error } = await supabase
+      .from('page')
+      .update({ ocr_status: 'pending', updated_at: new Date().toISOString() })
+      .eq('page_id', pageId)
+      .select()
+      .single();
+    if (error) throw error;
+    return sendSuccess(res, 200, data, 'OCR retry queued');
+  } catch (e) { next(e); }
+};
+
+// --- Page Regions (Admin) ---
+const listAdminPageRegions = async (req, res, next) => {
+  try {
+    const { page, limit, offset } = parsePagination(req.query);
+    const { page_id } = req.query;
+    let query = supabase.from('page_region').select('*', { count: 'exact' });
+    if (page_id) query = query.eq('page_id', page_id);
+    query = query.range(offset, offset + limit - 1);
+    const { data, error, count } = await query;
+    if (error) throw error;
+    return res.status(200).json({ success: true, message: 'Success', data, pagination: buildPaginationMeta(page, limit, count) });
+  } catch (e) { next(e); }
+};
+
+const createAdminPageRegion = async (req, res, next) => {
+  try {
+    const data = await pageRegionsRepo.create(req.body);
+    return sendSuccess(res, 201, data, 'Page region created');
+  } catch (e) { next(e); }
+};
+
+const updateAdminPageRegion = async (req, res, next) => {
+  try {
+    const exists = await pageRegionsRepo.existsById(req.params.regionId);
+    if (!exists) return next(new AppError('Page region not found', 404));
+    const data = await pageRegionsRepo.update(req.params.regionId, req.body);
+    return sendSuccess(res, 200, data, 'Page region updated');
+  } catch (e) { next(e); }
+};
+
+const deleteAdminPageRegion = async (req, res, next) => {
+  try {
+    const exists = await pageRegionsRepo.existsById(req.params.regionId);
+    if (!exists) return next(new AppError('Page region not found', 404));
+    await pageRegionsRepo.deleteById(req.params.regionId);
+    return sendSuccess(res, 200, null, 'Page region deleted');
+  } catch (e) { next(e); }
+};
+
 module.exports = {
   listUsers, getUserById, createUser, updateUser, updateUserStatus, updateUserRole, deleteUser,
   listAdminSeries, getAdminSeriesById, updateAdminSeriesStatus, deleteAdminSeries,
@@ -338,4 +533,11 @@ module.exports = {
   dashboardOverview, dashboardUsers, dashboardSeries, dashboardTasks, dashboardReviews, dashboardRankings, dashboardNotifications,
   exportFullSystem, exportSeries, exportUsers, exportRankings,
   importUsers, importSeries, importRankings, importFullSystem,
+  getActivityLogs,
+  globalSearch,
+  getStorageUsage,
+  getTrustScores,
+  getSystemHealth,
+  retryOcr,
+  listAdminPageRegions, createAdminPageRegion, updateAdminPageRegion, deleteAdminPageRegion,
 };
