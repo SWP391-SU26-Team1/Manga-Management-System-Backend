@@ -19,6 +19,7 @@ const vChapterRankings = require('../chapterRankings/chapterRankings.validation'
 const vNotifications = require('../notifications/notifications.validation');
 const vManuscripts = require('../manuscripts/manuscripts.validation');
 const vManuscriptFiles = require('../manuscriptFiles/manuscriptFiles.validation');
+const vPageRegions = require('../pageRegions/pageRegions.validation');
 
 router.use(authenticateToken);
 router.use(requireRole(['admin']));
@@ -60,7 +61,10 @@ router.delete('/page-tasks/:taskId', validate(vPageTasks.taskIdParamSchema), ctr
 // Feedbacks
 router.get('/page-task-feedbacks', validate(vFeedbacks.listFeedbacksSchema), ctrl.listAdminFeedbacks);
 router.get('/page-task-feedbacks/:feedbackId', validate(vFeedbacks.feedbackIdParamSchema), ctrl.getAdminFeedbackById);
-router.patch('/page-task-feedbacks/:feedbackId/status', validate(vFeedbacks.updateFeedbackStatusSchema), ctrl.updateAdminFeedbackStatus);
+// TODO: Route này bị tắt vì bảng page_task_feedback chưa có cột `status` trong DB.
+// Cần migration: ALTER TABLE page_task_feedback ADD COLUMN status VARCHAR DEFAULT 'pending';
+// sau đó mở lại route bên dưới.
+// router.patch('/page-task-feedbacks/:feedbackId/status', validate(vFeedbacks.updateFeedbackStatusSchema), ctrl.updateAdminFeedbackStatus);
 router.delete('/page-task-feedbacks/:feedbackId', validate(vFeedbacks.feedbackIdParamSchema), ctrl.deleteAdminFeedback);
 
 // Annotations
@@ -130,5 +134,29 @@ router.post('/import/full-system', ctrl.importFullSystem);
 router.post('/import/series', ctrl.importSeries);
 router.post('/import/users', ctrl.importUsers);
 router.post('/import/rankings', ctrl.importRankings);
+
+// Activity Logs
+router.get('/activity-logs', ctrl.getActivityLogs);
+
+// Global Search
+router.get('/search', ctrl.globalSearch);
+
+// Storage Usage
+router.get('/storage-usage', ctrl.getStorageUsage);
+
+// Trust Scores
+router.get('/trust-score', ctrl.getTrustScores);
+
+// System Health
+router.get('/system-health', ctrl.getSystemHealth);
+
+// Retry OCR
+router.post('/pages/:pageId/retry-ocr', validate(vPages.pageIdParamSchema), ctrl.retryOcr);
+
+// Page Regions
+router.get('/page-regions', ctrl.listAdminPageRegions);
+router.post('/page-regions', validate(vPageRegions.createRegionSchema), ctrl.createAdminPageRegion);
+router.patch('/page-regions/:regionId', validate(vPageRegions.updateRegionSchema), ctrl.updateAdminPageRegion);
+router.delete('/page-regions/:regionId', validate(vPageRegions.regionIdParamSchema), ctrl.deleteAdminPageRegion);
 
 module.exports = router;
