@@ -82,15 +82,12 @@ router.post('/login', validate(v.loginSchema), controller.login);
  *             required: [idToken]
  *             properties:
  *               idToken: { type: string, description: "Google ID token from frontend" }
- *               email: { type: string, example: "user@gmail.com" }
- *               googleId: { type: string, example: "google_sub_id" }
- *               name: { type: string, example: "John Doe" }
  *     responses:
  *       200: { description: Google login successful }
- *       400: { description: Missing idToken }
+ *       400: { description: Missing or invalid idToken }
  *       403: { description: Account suspended or banned }
  */
-router.post('/login-google', controller.loginWithGoogle);
+router.post('/login-google', validate(v.loginGoogleSchema), controller.loginWithGoogle);
 
 /**
  * @swagger

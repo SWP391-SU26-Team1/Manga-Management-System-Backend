@@ -1,5 +1,9 @@
 const authService = require('./auth.service');
 const { sendSuccess } = require('../../utils/response');
+const AppError = require('../../utils/appError');
+const { OAuth2Client } = require('google-auth-library');
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const register = async (req, res, next) => {
   try {
@@ -24,26 +28,28 @@ const loginWithGoogle = async (req, res, next) => {
     const { idToken } = req.body;
 
     if (!idToken) {
-      return res.status(400).json({ message: 'ID token is required' });
+      return next(new AppError('ID token is required', 400));
     }
 
-    // TODO: Verify Google ID token using google-auth-library
-    // const { OAuth2Client } = require('google-auth-library');
-    // const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-    // const ticket = await client.verifyIdToken({ idToken, audience: process.env.GOOGLE_CLIENT_ID });
-    // const payload = ticket.getPayload();
+    const ticket = await googleClient.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
 
-    // Tạm thời giả lập dữ liệu từ Google (sẽ uncomment sau khi cài google-auth-library)
-    const payload = {
-      email: req.body.email,
-      sub: req.body.googleId,
-      name: req.body.name
-    };
+    const payload = ticket.getPayload();
+    if (!payload || !payload.email || !payload.sub) {
+      throw new AppError('Invalid Google token payload', 400);
+    }
+
+    if (payload.email_verified === false) {
+      throw new AppError('Google email must be verified', 400);
+    }
 
     const data = await authService.loginWithGoogle({
       email: payload.email,
       googleId: payload.sub,
-      name: payload.name
+      name: payload.name || payload.email.split('@')[0],
+      avatar_url: payload.picture,
     });
 
     return sendSuccess(res, 200, data, 'Google login successful');

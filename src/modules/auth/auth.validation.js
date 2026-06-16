@@ -19,6 +19,12 @@ const loginSchema = z.object({
   }),
 });
 
+const loginGoogleSchema = z.object({
+  body: z.object({
+    idToken: z.string().min(1),
+  }),
+});
+
 const changePasswordSchema = z.object({
   body: z.object({
     old_password: z.string().min(1),

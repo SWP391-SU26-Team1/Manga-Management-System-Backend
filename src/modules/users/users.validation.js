@@ -1,7 +1,7 @@
-﻿const { z } = require('zod');
-const { USER_STATUS, USER_ROLES } = require('../../constants/status');
+﻿const { z } = require("zod");
+const { USER_STATUS, USER_ROLES } = require("../../constants/status");
 
-const uuidParam = z.string().uuid({ message: 'Invalid UUID' });
+const uuidParam = z.string().uuid({ message: "Invalid UUID" });
 
 const createUserSchema = z.object({
   body: z.object({
@@ -14,7 +14,7 @@ const createUserSchema = z.object({
     bio: z.string().optional(),
     gender: z.string().max(20).optional(),
     date_of_birth: z.string().optional(),
-    status: z.enum(USER_STATUS).default('active'),
+    status: z.enum(USER_STATUS).default("active"),
   }),
 });
 
@@ -55,7 +55,7 @@ const listUsersSchema = z.object({
     page: z.string().optional(),
     limit: z.string().optional(),
     sort: z.string().optional(),
-    order: z.enum(['asc', 'desc']).optional(),
+    order: z.enum(["asc", "desc"]).optional(),
   }),
 });
 

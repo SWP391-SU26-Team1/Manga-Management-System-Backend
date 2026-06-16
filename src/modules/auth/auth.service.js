@@ -1,4 +1,5 @@
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const usersRepo = require('../users/users.repository');
 const AppError = require('../../utils/appError');
@@ -70,19 +71,31 @@ const login = async ({ email, password }) => {
 };
 
 // Đăng nhập bằng Google
-const loginWithGoogle = async ({ email, googleId, name }) => {
+const loginWithGoogle = async ({ email, googleId, name, avatar_url }) => {
   let user = await usersRepo.findByEmail(email);
 
   // Nếu chưa có tài khoản -> Tạo mới với trạng thái active
   if (!user) {
+    const baseUsername = email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '') || 'googleuser';
+    let username = baseUsername;
+    let suffix = 1;
+
+    while (await usersRepo.findByUsername(username)) {
+      username = `${baseUsername}_${suffix}`;
+      suffix += 1;
+    }
+
+    const randomPassword = crypto.randomBytes(32).toString('hex');
+    const hashedPassword = await bcrypt.hash(randomPassword, 10);
+
     user = await usersRepo.create({
       email,
-      username: email.split('@')[0],
-      password: null, // Đăng nhập Google không cần mật khẩu
+      username,
+      password: hashedPassword,
       name,
-      google_id: googleId,
-      role: 'user',
-      status: 'active'
+      avatar_url,
+      role: 'reader',
+      status: 'active',
     });
   }
 

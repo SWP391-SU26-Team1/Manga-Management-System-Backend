@@ -1,5 +1,7 @@
 const taskService = require("./assistantTasks.service");
 const perfService = require("./assistantPerformance.service");
+const draftsService = require("./assistantDrafts.service");
+const drawingService = require("./assistantDrawing.service");
 const pageTaskFeedbacksRepo = require("../pageTaskFeedbacks/pageTaskFeedbacks.repository");
 const submissionsService = require("../pageSubmissions/pageSubmissions.service");
 const manuscriptFilesRepo = require("../manuscriptFiles/manuscriptFiles.repository");
@@ -296,6 +298,142 @@ const performanceByChapter = async (req, res, next) => {
   }
 };
 
+// --- Drafts (Bản Nháp) ---
+const listDraftManuscripts = async (req, res, next) => {
+  try {
+    const data = await draftsService.listDraftManuscripts(req.user.user_id, {
+      series_id: req.query.series_id,
+      chapter_id: req.query.chapter_id,
+    });
+    return sendSuccess(res, 200, data, "Success");
+  } catch (e) {
+    next(e);
+  }
+};
+
+const listDraftPages = async (req, res, next) => {
+  try {
+    const data = await draftsService.listDraftPages(req.user.user_id, {
+      chapter_id: req.query.chapter_id,
+    });
+    return sendSuccess(res, 200, data, "Success");
+  } catch (e) {
+    next(e);
+  }
+};
+
+const getManuscriptDetail = async (req, res, next) => {
+  try {
+    const data = await draftsService.getManuscriptDetail(
+      req.params.manuscriptId,
+    );
+    return sendSuccess(res, 200, data, "Success");
+  } catch (e) {
+    next(e);
+  }
+};
+
+const getDraftPageDetail = async (req, res, next) => {
+  try {
+    const data = await draftsService.getDraftPageDetail(req.params.pageId);
+    return sendSuccess(res, 200, data, "Success");
+  } catch (e) {
+    next(e);
+  }
+};
+
+const updateManuscriptDraft = async (req, res, next) => {
+  try {
+    const data = await draftsService.updateManuscript(
+      req.params.manuscriptId,
+      req.body,
+    );
+    return sendSuccess(res, 200, data, "Manuscript draft updated");
+  } catch (e) {
+    next(e);
+  }
+};
+
+const deleteManuscriptDraft = async (req, res, next) => {
+  try {
+    await draftsService.deleteManuscript(req.params.manuscriptId);
+    return sendSuccess(res, 200, null, "Manuscript draft deleted");
+  } catch (e) {
+    next(e);
+  }
+};
+
+// --- Drawing & Editing (Vẽ & Chỉnh sửa) ---
+const listDrawingPages = async (req, res, next) => {
+  try {
+    const data = await drawingService.listDrawingPages(req.user.user_id, {
+      chapter_id: req.query.chapter_id,
+      page_status: req.query.page_status,
+    });
+    return sendSuccess(res, 200, data, "Success");
+  } catch (e) {
+    next(e);
+  }
+};
+
+const getDrawingPageDetail = async (req, res, next) => {
+  try {
+    const data = await drawingService.getDrawingPageDetail(
+      req.params.pageId,
+      req.user.user_id,
+    );
+    return sendSuccess(res, 200, data, "Success");
+  } catch (e) {
+    next(e);
+  }
+};
+
+const listPageVersions = async (req, res, next) => {
+  try {
+    const data = await drawingService.listPageVersions(
+      req.params.pageId,
+      req.user.user_id,
+    );
+    return sendSuccess(res, 200, data, "Success");
+  } catch (e) {
+    next(e);
+  }
+};
+
+const getVersionDetail = async (req, res, next) => {
+  try {
+    const data = await drawingService.getVersionDetail(req.params.versionId);
+    return sendSuccess(res, 200, data, "Success");
+  } catch (e) {
+    next(e);
+  }
+};
+
+const listMyDrawingTasks = async (req, res, next) => {
+  try {
+    const data = await drawingService.listMyDrawingTasks(req.user.user_id, {
+      task_type: req.query.task_type,
+      status: req.query.status,
+      overdue: req.query.overdue,
+    });
+    return sendSuccess(res, 200, data, "Success");
+  } catch (e) {
+    next(e);
+  }
+};
+
+const updatePageDrawingStatus = async (req, res, next) => {
+  try {
+    const data = await drawingService.updatePageStatus(
+      req.params.pageId,
+      req.body.status,
+    );
+    return sendSuccess(res, 200, data, "Page status updated");
+  } catch (e) {
+    next(e);
+  }
+};
+
 // --- Notifications ---
 const listNotifications = async (req, res, next) => {
   try {
@@ -400,6 +538,18 @@ module.exports = {
   performanceBreakdown,
   performanceBySeries,
   performanceByChapter,
+  listDraftManuscripts,
+  listDraftPages,
+  getManuscriptDetail,
+  getDraftPageDetail,
+  updateManuscriptDraft,
+  deleteManuscriptDraft,
+  listDrawingPages,
+  getDrawingPageDetail,
+  listPageVersions,
+  getVersionDetail,
+  listMyDrawingTasks,
+  updatePageDrawingStatus,
   listNotifications,
   getUnreadNotifications,
   markNotificationRead,
