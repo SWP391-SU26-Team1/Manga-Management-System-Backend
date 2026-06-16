@@ -17,3 +17,6 @@ yarn-error.log*
 # Test output & coverage
 tests/
 coverage/
+
+# Claude Code
+.claude/

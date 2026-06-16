@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+<<<<<<< HEAD
 const { authenticateToken } = require("../../middlewares/auth.middleware");
 const { requireRole } = require("../../middlewares/role.middleware");
 const { validate } = require("../../middlewares/validate.middleware");
@@ -19,6 +20,28 @@ const vChapterRankings = require("../chapterRankings/chapterRankings.validation"
 const vNotifications = require("../notifications/notifications.validation");
 const vManuscripts = require("../manuscripts/manuscripts.validation");
 const vManuscriptFiles = require("../manuscriptFiles/manuscriptFiles.validation");
+=======
+const { authenticateToken } = require('../../middlewares/auth.middleware');
+const { requireRole } = require('../../middlewares/role.middleware');
+const { validate } = require('../../middlewares/validate.middleware');
+const ctrl = require('./admin.controller');
+const vUsers = require('../users/users.validation');
+const vSeries = require('../series/series.validation');
+const vChapters = require('../chapters/chapters.validation');
+const vPages = require('../pages/pages.validation');
+const vPageTasks = require('../pageTasks/pageTasks.validation');
+const vFeedbacks = require('../pageTaskFeedbacks/pageTaskFeedbacks.validation');
+const vAnnotations = require('../annotations/annotations.validation');
+const vReviewSessions = require('../reviewSessions/reviewSessions.validation');
+const vVotes = require('../votes/votes.validation');
+const vRankingPeriods = require('../rankingPeriods/rankingPeriods.validation');
+const vSeriesRankings = require('../seriesRankings/seriesRankings.validation');
+const vChapterRankings = require('../chapterRankings/chapterRankings.validation');
+const vNotifications = require('../notifications/notifications.validation');
+const vManuscripts = require('../manuscripts/manuscripts.validation');
+const vManuscriptFiles = require('../manuscriptFiles/manuscriptFiles.validation');
+const vPageRegions = require('../pageRegions/pageRegions.validation');
+>>>>>>> df8314937c200427e5f858bda50ee748d60f7e55
 
 router.use(authenticateToken);
 router.use(requireRole(["admin"]));
@@ -138,6 +161,7 @@ router.delete(
 );
 
 // Feedbacks
+<<<<<<< HEAD
 router.get(
   "/page-task-feedbacks",
   validate(vFeedbacks.listFeedbacksSchema),
@@ -158,6 +182,15 @@ router.delete(
   validate(vFeedbacks.feedbackIdParamSchema),
   ctrl.deleteAdminFeedback,
 );
+=======
+router.get('/page-task-feedbacks', validate(vFeedbacks.listFeedbacksSchema), ctrl.listAdminFeedbacks);
+router.get('/page-task-feedbacks/:feedbackId', validate(vFeedbacks.feedbackIdParamSchema), ctrl.getAdminFeedbackById);
+// TODO: Route này bị tắt vì bảng page_task_feedback chưa có cột `status` trong DB.
+// Cần migration: ALTER TABLE page_task_feedback ADD COLUMN status VARCHAR DEFAULT 'pending';
+// sau đó mở lại route bên dưới.
+// router.patch('/page-task-feedbacks/:feedbackId/status', validate(vFeedbacks.updateFeedbackStatusSchema), ctrl.updateAdminFeedbackStatus);
+router.delete('/page-task-feedbacks/:feedbackId', validate(vFeedbacks.feedbackIdParamSchema), ctrl.deleteAdminFeedback);
+>>>>>>> df8314937c200427e5f858bda50ee748d60f7e55
 
 // Annotations
 router.get("/annotations", ctrl.listAdminAnnotations);
@@ -330,5 +363,29 @@ router.post("/import/full-system", ctrl.importFullSystem);
 router.post("/import/series", ctrl.importSeries);
 router.post("/import/users", ctrl.importUsers);
 router.post("/import/rankings", ctrl.importRankings);
+
+// Activity Logs
+router.get('/activity-logs', ctrl.getActivityLogs);
+
+// Global Search
+router.get('/search', ctrl.globalSearch);
+
+// Storage Usage
+router.get('/storage-usage', ctrl.getStorageUsage);
+
+// Trust Scores
+router.get('/trust-score', ctrl.getTrustScores);
+
+// System Health
+router.get('/system-health', ctrl.getSystemHealth);
+
+// Retry OCR
+router.post('/pages/:pageId/retry-ocr', validate(vPages.pageIdParamSchema), ctrl.retryOcr);
+
+// Page Regions
+router.get('/page-regions', ctrl.listAdminPageRegions);
+router.post('/page-regions', validate(vPageRegions.createRegionSchema), ctrl.createAdminPageRegion);
+router.patch('/page-regions/:regionId', validate(vPageRegions.updateRegionSchema), ctrl.updateAdminPageRegion);
+router.delete('/page-regions/:regionId', validate(vPageRegions.regionIdParamSchema), ctrl.deleteAdminPageRegion);
 
 module.exports = router;
