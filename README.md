@@ -6,16 +6,16 @@ REST API cho hệ thống quản lý manga, xây dựng bằng **Node.js + Expre
 
 ## Tech Stack
 
-| | |
-|---|---|
-| Runtime | Node.js 18+ |
-| Framework | Express 5 |
-| Database | Supabase (PostgreSQL) |
-| Auth | JWT + Bcrypt |
-| Validation | Zod v4 |
-| File Upload | Multer + Cloudinary |
-| Docs | Swagger UI (OpenAPI 3.0) |
-| Test | Jest + Supertest |
+|             |                          |
+| ----------- | ------------------------ |
+| Runtime     | Node.js 18+              |
+| Framework   | Express 5                |
+| Database    | Supabase (PostgreSQL)    |
+| Auth        | JWT + Bcrypt             |
+| Validation  | Zod v4                   |
+| File Upload | Multer + Cloudinary      |
+| Docs        | Swagger UI (OpenAPI 3.0) |
+| Test        | Jest + Supertest         |
 
 ---
 
@@ -97,6 +97,7 @@ curl http://localhost:5000/api/health
 Mở trình duyệt, vào: **`http://localhost:5000/api-docs`**
 
 **Cách dùng Swagger để test API có auth:**
+
 1. Gọi `POST /api/auth/login` → copy giá trị `data.token` trong response
 2. Click **Authorize 🔒** ở góc trên phải trang Swagger
 3. Dán token vào ô `Value` → click **Authorize**
@@ -168,14 +169,14 @@ tests/
 
 ## Roles trong hệ thống
 
-| Role | Mô tả | Cách tạo tài khoản |
-|---|---|---|
-| `mangaka` | Tác giả manga | Tự đăng ký `/api/auth/register` |
-| `assistant` | Trợ lý (inking, coloring, lettering…) | Tự đăng ký `/api/auth/register` |
-| `editor` | Biên tập viên | Admin tạo qua `/api/admin/users` |
-| `board` | Hội đồng biên tập | Admin tạo qua `/api/admin/users` |
-| `reviewer` | Người đánh giá bản thảo | Admin tạo qua `/api/admin/users` |
-| `admin` | Quản trị viên hệ thống | Admin tạo qua `/api/admin/users` |
+| Role        | Mô tả                                 | Cách tạo tài khoản               |
+| ----------- | ------------------------------------- | -------------------------------- |
+| `mangaka`   | Tác giả manga                         | Tự đăng ký `/api/auth/register`  |
+| `assistant` | Trợ lý (inking, coloring, lettering…) | Tự đăng ký `/api/auth/register`  |
+| `editor`    | Biên tập viên                         | Admin tạo qua `/api/admin/users` |
+| `board`     | Hội đồng biên tập                     | Admin tạo qua `/api/admin/users` |
+| `reviewer`  | Người đánh giá bản thảo               | Admin tạo qua `/api/admin/users` |
+| `admin`     | Quản trị viên hệ thống                | Admin tạo qua `/api/admin/users` |
 
 > `editor`, `board`, `reviewer`, `admin` **không thể tự đăng ký** — phải do admin cấp.
 
@@ -195,6 +196,7 @@ Tất cả response đều theo format thống nhất:
 ```
 
 Lỗi:
+
 ```json
 {
   "success": false,
@@ -208,18 +210,51 @@ Lỗi:
 
 ## Environment Variables
 
-| Biến | Bắt buộc | Mô tả |
-|---|---|---|
-| `PORT` | Không | Port server (mặc định: 5000) |
-| `SUPABASE_URL` | Có | URL Supabase project |
-| `SUPABASE_SERVICE_ROLE_KEY` | Có | Service role key (chỉ dùng phía backend) |
-| `JWT_SECRET` | Có | Secret ký JWT token — đặt chuỗi dài, random |
-| `CLOUDINARY_CLOUD_NAME` | Có | Cloud name Cloudinary |
-| `CLOUDINARY_API_KEY` | Có | API key Cloudinary |
-| `CLOUDINARY_API_SECRET` | Có | API secret Cloudinary |
-| `INTERNAL_SERVICE_SECRET` | Có | Secret cho header `x-internal-secret` gọi `/api/internal` |
+| Biến                        | Bắt buộc | Mô tả                                                     |
+| --------------------------- | -------- | --------------------------------------------------------- |
+| `PORT`                      | Không    | Port server (mặc định: 5000)                              |
+| `SUPABASE_URL`              | Có       | URL Supabase project                                      |
+| `SUPABASE_SERVICE_ROLE_KEY` | Có       | Service role key (chỉ dùng phía backend)                  |
+| `JWT_SECRET`                | Có       | Secret ký JWT token — đặt chuỗi dài, random               |
+| `CLOUDINARY_CLOUD_NAME`     | Có       | Cloud name Cloudinary                                     |
+| `CLOUDINARY_API_KEY`        | Có       | API key Cloudinary                                        |
+| `CLOUDINARY_API_SECRET`     | Có       | API secret Cloudinary                                     |
+| `INTERNAL_SERVICE_SECRET`   | Có       | Secret cho header `x-internal-secret` gọi `/api/internal` |
 
 ---
+
+## Google Sign-In (Gmail) setup
+
+This backend supports Google Sign-In in two ways:
+
+- Frontend flow (recommended): obtain a Google `idToken` in the client using Google's libraries and POST it to the backend endpoint `/api/auth/login-google`.
+- Server-side OAuth redirect (optional): use `GOOGLE_CLIENT_SECRET` and `GOOGLE_CALLBACK_URL` to implement redirect flows.
+
+Steps:
+
+1. Create OAuth 2.0 Client ID in Google Cloud Console (Application type: Web application).
+
+- Authorized redirect URI (for server-side flow): `http://localhost:5000/api/auth/google/callback` (adjust port if needed)
+
+2. Add these variables to your `.env` (or `.env.local`):
+
+- `GOOGLE_CLIENT_ID` — required (used to verify ID tokens from frontend)
+- `GOOGLE_CLIENT_SECRET` — optional (only for server-side OAuth redirect)
+- `GOOGLE_CALLBACK_URL` — optional (only for server-side OAuth redirect)
+
+Testing locally (frontend flow):
+
+```bash
+# start server
+npm run dev
+
+# from frontend, obtain Google idToken and send POST to:
+curl -X POST http://localhost:5000/api/auth/login-google \
+  -H "Content-Type: application/json" \
+  -d '{"idToken":"<GOOGLE_ID_TOKEN>"}'
+```
+
+The backend verifies the token using `google-auth-library`, creates or updates a user in the `users` table, and returns a JWT in the standard response format.
 
 ## Chạy tests
 
@@ -233,11 +268,11 @@ npm test
 
 ## Scripts
 
-| Lệnh | Mô tả |
-|---|---|
+| Lệnh          | Mô tả                                      |
+| ------------- | ------------------------------------------ |
 | `npm run dev` | Chạy development với nodemon (auto reload) |
-| `npm start` | Chạy production |
-| `npm test` | Chạy integration tests |
+| `npm start`   | Chạy production                            |
+| `npm test`    | Chạy integration tests                     |
 
 ---
 

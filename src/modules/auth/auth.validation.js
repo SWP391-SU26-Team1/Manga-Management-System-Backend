@@ -1,5 +1,5 @@
-﻿const { z } = require('zod');
-const { SELF_REGISTER_ROLES } = require('../../constants/status');
+﻿const { z } = require("zod");
+const { SELF_REGISTER_ROLES } = require("../../constants/status");
 
 const registerSchema = z.object({
   body: z.object({
@@ -8,7 +8,7 @@ const registerSchema = z.object({
     password: z.string().min(6),
     name: z.string().max(150).optional(),
     // Only unprivileged roles can be self-assigned; admin/editor/board assigned by admin
-    role: z.enum(SELF_REGISTER_ROLES).default('mangaka'),
+    role: z.enum(SELF_REGISTER_ROLES).default("mangaka"),
   }),
 });
 
@@ -32,4 +32,9 @@ const changePasswordSchema = z.object({
   }),
 });
 
-module.exports = { registerSchema, loginSchema, changePasswordSchema };
+module.exports = {
+  registerSchema,
+  loginSchema,
+  loginGoogleSchema,
+  changePasswordSchema,
+};

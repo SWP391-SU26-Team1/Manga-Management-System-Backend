@@ -88,13 +88,22 @@ const loginWithGoogle = async ({ email, googleId, name, avatar_url }) => {
     const randomPassword = crypto.randomBytes(32).toString('hex');
     const hashedPassword = await bcrypt.hash(randomPassword, 10);
 
+    // Support preset emails from environment variable (comma-separated)
+    // Example: PRESET_EMAILS=minhphuc242004@gmail.com,alice@example.com
+    const presetEmails = (process.env.PRESET_EMAILS || '')
+      .split(',')
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+    const presetRole = process.env.PRESET_EMAIL_ROLE || 'admin';
+    const roleToAssign = presetEmails.includes(email.toLowerCase()) ? presetRole : 'reader';
+
     user = await usersRepo.create({
       email,
       username,
       password: hashedPassword,
       name,
       avatar_url,
-      role: 'reader',
+      role: roleToAssign,
       status: 'active',
     });
   }
