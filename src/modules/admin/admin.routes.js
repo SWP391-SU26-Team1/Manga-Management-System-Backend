@@ -160,20 +160,6 @@ router.delete(
   validate(vFeedbacks.feedbackIdParamSchema),
   ctrl.deleteAdminFeedback,
 );
-router.get(
-  "/page-task-feedbacks",
-  validate(vFeedbacks.listFeedbacksSchema),
-  ctrl.listAdminFeedbacks,
-);
-router.get(
-  "/page-task-feedbacks/:feedbackId",
-  validate(vFeedbacks.feedbackIdParamSchema),
-  ctrl.getAdminFeedbackById,
-);
-// TODO: Route này bị tắt vì bảng page_task_feedback chưa có cột `status` trong DB.
-// Cần migration: ALTER TABLE page_task_feedback ADD COLUMN status VARCHAR DEFAULT 'pending';
-// sau đó mở lại route bên dưới.
-// router.patch('/page-task-feedbacks/:feedbackId/status', validate(vFeedbacks.updateFeedbackStatusSchema), ctrl.updateAdminFeedbackStatus);
 router.delete(
   "/page-task-feedbacks/:feedbackId",
   validate(vFeedbacks.feedbackIdParamSchema),
@@ -204,6 +190,11 @@ router.get(
   "/review-sessions/:sessionId",
   validate(vReviewSessions.sessionIdParamSchema),
   ctrl.getAdminSessionById,
+);
+router.post(
+  "/review-sessions",
+  validate(vReviewSessions.createSessionSchema),
+  ctrl.createAdminSession,
 );
 router.patch(
   "/review-sessions/:sessionId",

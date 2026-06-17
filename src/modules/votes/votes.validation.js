@@ -5,7 +5,6 @@ const uuidParam = z.string().uuid({ message: 'Invalid UUID' });
 
 const createVoteSchema = z.object({
   body: z.object({
-    voter_id: uuidParam,
     session_id: uuidParam.optional(),
     decision: z.string().max(50).optional(),
     score: z.number().int().min(1).max(10).nullable().optional(),

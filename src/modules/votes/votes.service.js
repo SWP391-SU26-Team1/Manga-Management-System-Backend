@@ -18,6 +18,7 @@ const createVote = async (payload) => {
   if (payload.session_id) {
     const session = await sessionsRepo.findById(payload.session_id);
     if (!session) throw new AppError('Review session not found', 404);
+    if (session.status !== 'in_progress') throw new AppError('Can only vote on sessions that are in progress', 400);
   }
 
   if (payload.score !== null && payload.score !== undefined) {
