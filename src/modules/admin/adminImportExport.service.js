@@ -1,7 +1,7 @@
 const supabase = require('../../config/supabase');
 
 const exportFullSystem = async () => {
-  const [{ data: users }, { data: series }, { data: chapters }, { data: pages }, { data: tasks }, { data: rankingPeriods }, { data: seriesRankings }, { data: chapterRankings }] = await Promise.all([
+  const [{ data: users }, { data: series }, { data: chapters }, { data: pages }, { data: tasks }, { data: rankingPeriods }, { data: seriesRankings }, { data: chapterRankings }, { data: reviewSessions }, { data: votes }] = await Promise.all([
     supabase.from('users').select('user_id, username, email, role, status, created_at'),
     supabase.from('series').select('*'),
     supabase.from('chapter').select('*'),
@@ -10,8 +10,10 @@ const exportFullSystem = async () => {
     supabase.from('ranking_period').select('*'),
     supabase.from('series_ranking').select('*'),
     supabase.from('chapter_ranking').select('*'),
+    supabase.from('review_session').select('*'),
+    supabase.from('vote').select('*'),
   ]);
-  return { exported_at: new Date().toISOString(), users, series, chapters, pages, tasks, rankingPeriods, seriesRankings, chapterRankings };
+  return { exported_at: new Date().toISOString(), users, series, chapters, pages, tasks, rankingPeriods, seriesRankings, chapterRankings, reviewSessions, votes };
 };
 
 const exportSeries = async (seriesId) => {

@@ -8,7 +8,9 @@ const pageTasksRepo = require('../pageTasks/pageTasks.repository');
 const pageTaskFeedbacksRepo = require('../pageTaskFeedbacks/pageTaskFeedbacks.repository');
 const annotationsRepo = require('../annotations/annotations.repository');
 const reviewSessionsRepo = require('../reviewSessions/reviewSessions.repository');
+const reviewSessionsSvc = require('../reviewSessions/reviewSessions.service');
 const votesRepo = require('../votes/votes.repository');
+const votesSvc = require('../votes/votes.service');
 const rankingPeriodsRepo = require('../rankingPeriods/rankingPeriods.repository');
 const pageRegionsRepo = require('../pageRegions/pageRegions.repository');
 const { sendSuccess } = require('../../utils/response');
@@ -65,8 +67,9 @@ const updateUser = async (req, res, next) => {
 
 const updateUserStatus = async (req, res, next) => {
   try {
-    const data = await usersRepo.update(req.params.userId, { status: req.body.status });
-    return sendSuccess(res, 200, data, 'Status updated');
+    const user = await usersRepo.update(req.params.userId, { status: req.body.status });
+    const { password: _p, ...safeUser } = user;
+    return sendSuccess(res, 200, safeUser, 'Status updated');
   } catch (e) { next(e); }
 };
 
@@ -167,6 +170,12 @@ const deleteAdminAnnotation = makeDeleteHandler('annotation', 'annotation_id', '
 // Review Sessions
 const listAdminSessions = makeListHandler('review_session');
 const getAdminSessionById = makeGetByIdHandler(reviewSessionsRepo, 'sessionId');
+const createAdminSession = async (req, res, next) => {
+  try {
+    const data = await reviewSessionsSvc.createSession(req.body);
+    return sendSuccess(res, 201, data, 'Review session created');
+  } catch (e) { next(e); }
+};
 const updateAdminSession = async (req, res, next) => {
   try {
     const data = await reviewSessionsRepo.update(req.params.sessionId, { ...req.body, updated_at: new Date().toISOString() });
@@ -181,12 +190,22 @@ const listAdminVotes = makeListHandler('vote');
 const getAdminVoteById = makeGetByIdHandler(votesRepo, 'voteId');
 const updateAdminVote = async (req, res, next) => {
   try {
-    const data = await votesRepo.update(req.params.voteId, { ...req.body, updated_at: new Date().toISOString() });
+    const data = await votesSvc.updateVote(req.params.voteId, req.body);
     return sendSuccess(res, 200, data, 'Vote updated');
   } catch (e) { next(e); }
 };
-const updateAdminVoteStatus = makeStatusUpdateHandler('vote', 'vote_id', 'voteId');
-const deleteAdminVote = makeDeleteHandler('vote', 'vote_id', 'voteId');
+const updateAdminVoteStatus = async (req, res, next) => {
+  try {
+    const data = await votesSvc.updateVoteStatus(req.params.voteId, req.body.status);
+    return sendSuccess(res, 200, data, 'Status updated');
+  } catch (e) { next(e); }
+};
+const deleteAdminVote = async (req, res, next) => {
+  try {
+    await votesSvc.deleteVote(req.params.voteId);
+    return sendSuccess(res, 200, null, 'Vote deleted');
+  } catch (e) { next(e); }
+};
 
 // Ranking Periods
 const listAdminPeriods = makeListHandler('ranking_period');
@@ -524,7 +543,7 @@ module.exports = {
   listAdminTasks, getAdminTaskById, updateAdminTask, updateAdminTaskStatus, deleteAdminTask,
   listAdminFeedbacks, getAdminFeedbackById, updateAdminFeedbackStatus, deleteAdminFeedback,
   listAdminAnnotations, getAdminAnnotationById, updateAdminAnnotationStatus, deleteAdminAnnotation,
-  listAdminSessions, getAdminSessionById, updateAdminSession, updateAdminSessionStatus, deleteAdminSession,
+  listAdminSessions, getAdminSessionById, createAdminSession, updateAdminSession, updateAdminSessionStatus, deleteAdminSession,
   listAdminVotes, getAdminVoteById, updateAdminVote, updateAdminVoteStatus, deleteAdminVote,
   listAdminPeriods, getAdminPeriodById, createAdminPeriod, updateAdminPeriod, updateAdminPeriodStatus, deleteAdminPeriod,
   listAdminSeriesRankings, createAdminSeriesRanking, updateAdminSeriesRanking, deleteAdminSeriesRanking,
