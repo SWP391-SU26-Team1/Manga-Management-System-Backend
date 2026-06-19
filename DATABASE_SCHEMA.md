@@ -10,20 +10,20 @@ Primary key: `user_id`
 
 Columns:
 
-| Column | Type | Required | Default | Notes |
-| --- | --- | --- | --- | --- |
-| `user_id` | UUID | yes | `gen_random_uuid()` | PK |
-| `username` | VARCHAR(100) | yes | | unique |
-| `email` | VARCHAR(255) | yes | | unique |
-| `password` | TEXT | yes | | hashed password |
-| `role` | VARCHAR(50) | yes | | app role |
-| `avatar_url` | TEXT | no | | |
-| `bio` | TEXT | no | | |
-| `name` | VARCHAR(150) | no | | |
-| `gender` | VARCHAR(20) | no | | |
-| `date_of_birth` | DATE | no | | |
-| `status` | VARCHAR(50) | yes | `active` | check constraint |
-| `created_at` | TIMESTAMP | no | `CURRENT_TIMESTAMP` | |
+| Column          | Type         | Required | Default             | Notes            |
+| --------------- | ------------ | -------- | ------------------- | ---------------- |
+| `user_id`       | UUID         | yes      | `gen_random_uuid()` | PK               |
+| `username`      | VARCHAR(100) | yes      |                     | unique           |
+| `email`         | VARCHAR(255) | yes      |                     | unique           |
+| `password`      | TEXT         | yes      |                     | hashed password  |
+| `role`          | VARCHAR(50)  | yes      |                     | app role         |
+| `avatar_url`    | TEXT         | no       |                     |                  |
+| `bio`           | TEXT         | no       |                     |                  |
+| `name`          | VARCHAR(150) | no       |                     |                  |
+| `gender`        | VARCHAR(20)  | no       |                     |                  |
+| `date_of_birth` | DATE         | no       |                     |                  |
+| `status`        | VARCHAR(50)  | yes      | `active`            | check constraint |
+| `created_at`    | TIMESTAMP    | no       | `CURRENT_TIMESTAMP` |                  |
 
 Status values: `active`, `suspended`, `banned`, `inactive`
 
@@ -35,15 +35,15 @@ Primary key: `notification_id`
 
 Columns:
 
-| Column | Type | Required | Default | Notes |
-| --- | --- | --- | --- | --- |
-| `notification_id` | UUID | yes | `gen_random_uuid()` | PK |
-| `user_id` | UUID | yes | | FK to `users.user_id`, cascade delete |
-| `title` | VARCHAR(255) | yes | | |
-| `content` | TEXT | no | | |
-| `type` | VARCHAR(50) | no | | |
-| `is_read` | BOOLEAN | yes | `false` | no status column |
-| `created_at` | TIMESTAMP | no | `CURRENT_TIMESTAMP` | |
+| Column            | Type         | Required | Default             | Notes                                 |
+| ----------------- | ------------ | -------- | ------------------- | ------------------------------------- |
+| `notification_id` | UUID         | yes      | `gen_random_uuid()` | PK                                    |
+| `user_id`         | UUID         | yes      |                     | FK to `users.user_id`, cascade delete |
+| `title`           | VARCHAR(255) | yes      |                     |                                       |
+| `content`         | TEXT         | no       |                     |                                       |
+| `type`            | VARCHAR(50)  | no       |                     |                                       |
+| `is_read`         | BOOLEAN      | yes      | `false`             | no status column                      |
+| `created_at`      | TIMESTAMP    | no       | `CURRENT_TIMESTAMP` |                                       |
 
 Indexes: `idx_notification_user_id`
 
@@ -53,17 +53,17 @@ Primary key: `series_id`
 
 Columns:
 
-| Column | Type | Required | Default | Notes |
-| --- | --- | --- | --- | --- |
-| `series_id` | UUID | yes | `gen_random_uuid()` | PK |
-| `title` | VARCHAR(255) | yes | | |
-| `description` | TEXT | no | | |
-| `cover_image_url` | TEXT | no | | |
-| `genre` | VARCHAR(100) | no | | |
-| `status` | VARCHAR(50) | yes | `draft` | check constraint |
-| `view_count` | INT | no | `0` | |
-| `created_at` | TIMESTAMP | no | `CURRENT_TIMESTAMP` | |
-| `updated_at` | TIMESTAMP | no | `CURRENT_TIMESTAMP` | update manually in API |
+| Column            | Type         | Required | Default             | Notes                  |
+| ----------------- | ------------ | -------- | ------------------- | ---------------------- |
+| `series_id`       | UUID         | yes      | `gen_random_uuid()` | PK                     |
+| `title`           | VARCHAR(255) | yes      |                     |                        |
+| `description`     | TEXT         | no       |                     |                        |
+| `cover_image_url` | TEXT         | no       |                     |                        |
+| `genre`           | VARCHAR(100) | no       |                     |                        |
+| `status`          | VARCHAR(50)  | yes      | `draft`             | check constraint       |
+| `view_count`      | INT          | no       | `0`                 |                        |
+| `created_at`      | TIMESTAMP    | no       | `CURRENT_TIMESTAMP` |                        |
+| `updated_at`      | TIMESTAMP    | no       | `CURRENT_TIMESTAMP` | update manually in API |
 
 Status values: `draft`, `pending_review`, `approved`, `rejected`, `published`, `archived`, `hidden`, `banned`, `deleted`
 
@@ -75,16 +75,39 @@ Primary key: `series_member_id`
 
 Columns:
 
-| Column | Type | Required | Default | Notes |
-| --- | --- | --- | --- | --- |
-| `series_member_id` | UUID | yes | `gen_random_uuid()` | PK |
-| `series_id` | UUID | yes | | FK to `series.series_id`, cascade delete |
-| `user_id` | UUID | yes | | FK to `users.user_id`, cascade delete |
-| `role_in_series` | VARCHAR(50) | yes | | |
+| Column             | Type        | Required | Default             | Notes                                    |
+| ------------------ | ----------- | -------- | ------------------- | ---------------------------------------- |
+| `series_member_id` | UUID        | yes      | `gen_random_uuid()` | PK                                       |
+| `series_id`        | UUID        | yes      |                     | FK to `series.series_id`, cascade delete |
+| `user_id`          | UUID        | yes      |                     | FK to `users.user_id`, cascade delete    |
+| `role_in_series`   | VARCHAR(50) | yes      |                     |                                          |
 
 Unique constraints: `UNIQUE (series_id, user_id)`
 
 Indexes: `idx_series_member_series_id`, `idx_series_member_user_id`
+
+### recovery_proposal
+
+Primary key: `proposal_id`
+
+Columns:
+
+| Column               | Type         | Required | Default             | Notes                                    |
+| -------------------- | ------------ | -------- | ------------------- | ---------------------------------------- |
+| `proposal_id`        | UUID         | yes      | `gen_random_uuid()` | PK                                       |
+| `series_id`          | UUID         | yes      |                     | FK to `series.series_id`, cascade delete |
+| `created_by_user_id` | UUID         | yes      |                     | FK to `users.user_id`, set null          |
+| `title`              | VARCHAR(255) | yes      |                     |                                          |
+| `description`        | TEXT         | yes      |                     |                                          |
+| `status`             | VARCHAR(50)  | yes      | `pending`           | check constraint                         |
+| `created_at`         | TIMESTAMP    | no       | `CURRENT_TIMESTAMP` |                                          |
+| `updated_at`         | TIMESTAMP    | no       | `CURRENT_TIMESTAMP` | update manually in API                   |
+
+Status values: `pending`, `approved`, `rejected`
+
+Indexes: `idx_recovery_proposal_series_id`, `idx_recovery_proposal_created_by_user_id`
+
+Referenced by: none
 
 ### chapter
 
@@ -92,18 +115,18 @@ Primary key: `chapter_id`
 
 Columns:
 
-| Column | Type | Required | Default | Notes |
-| --- | --- | --- | --- | --- |
-| `chapter_id` | UUID | yes | `gen_random_uuid()` | PK |
-| `series_id` | UUID | yes | | FK to `series.series_id`, cascade delete |
-| `chapter_number` | INT | yes | | unique per series |
-| `title` | VARCHAR(255) | no | | |
-| `thumbnail_image_url` | TEXT | no | | |
-| `status` | VARCHAR(50) | yes | `draft` | check constraint |
-| `view_count` | INT | no | `0` | |
-| `publish_date` | TIMESTAMP | no | | |
-| `created_at` | TIMESTAMP | no | `CURRENT_TIMESTAMP` | |
-| `updated_at` | TIMESTAMP | no | `CURRENT_TIMESTAMP` | update manually in API |
+| Column                | Type         | Required | Default             | Notes                                    |
+| --------------------- | ------------ | -------- | ------------------- | ---------------------------------------- |
+| `chapter_id`          | UUID         | yes      | `gen_random_uuid()` | PK                                       |
+| `series_id`           | UUID         | yes      |                     | FK to `series.series_id`, cascade delete |
+| `chapter_number`      | INT          | yes      |                     | unique per series                        |
+| `title`               | VARCHAR(255) | no       |                     |                                          |
+| `thumbnail_image_url` | TEXT         | no       |                     |                                          |
+| `status`              | VARCHAR(50)  | yes      | `draft`             | check constraint                         |
+| `view_count`          | INT          | no       | `0`                 |                                          |
+| `publish_date`        | TIMESTAMP    | no       |                     |                                          |
+| `created_at`          | TIMESTAMP    | no       | `CURRENT_TIMESTAMP` |                                          |
+| `updated_at`          | TIMESTAMP    | no       | `CURRENT_TIMESTAMP` | update manually in API                   |
 
 Status values: `draft`, `pending_review`, `approved`, `rejected`, `published`, `archived`, `hidden`, `banned`, `deleted`
 
@@ -119,17 +142,17 @@ Primary key: `page_id`
 
 Columns:
 
-| Column | Type | Required | Default | Notes |
-| --- | --- | --- | --- | --- |
-| `page_id` | UUID | yes | `gen_random_uuid()` | PK |
-| `chapter_id` | UUID | yes | | FK to `chapter.chapter_id`, cascade delete |
-| `page_number` | INT | yes | | unique per chapter |
-| `image_url` | TEXT | no | | |
-| `status` | VARCHAR(50) | yes | `draft` | check constraint |
-| `width` | INT | no | | |
-| `height` | INT | no | | |
-| `created_at` | TIMESTAMP | no | `CURRENT_TIMESTAMP` | |
-| `updated_at` | TIMESTAMP | no | `CURRENT_TIMESTAMP` | update manually in API |
+| Column        | Type        | Required | Default             | Notes                                      |
+| ------------- | ----------- | -------- | ------------------- | ------------------------------------------ |
+| `page_id`     | UUID        | yes      | `gen_random_uuid()` | PK                                         |
+| `chapter_id`  | UUID        | yes      |                     | FK to `chapter.chapter_id`, cascade delete |
+| `page_number` | INT         | yes      |                     | unique per chapter                         |
+| `image_url`   | TEXT        | no       |                     |                                            |
+| `status`      | VARCHAR(50) | yes      | `draft`             | check constraint                           |
+| `width`       | INT         | no       |                     |                                            |
+| `height`      | INT         | no       |                     |                                            |
+| `created_at`  | TIMESTAMP   | no       | `CURRENT_TIMESTAMP` |                                            |
+| `updated_at`  | TIMESTAMP   | no       | `CURRENT_TIMESTAMP` | update manually in API                     |
 
 Status values: `draft`, `in_progress`, `review`, `completed`, `published`, `archived`, `hidden`, `banned`, `deleted`
 
@@ -145,16 +168,16 @@ Primary key: `region_id`
 
 Columns:
 
-| Column | Type | Required | Default | Notes |
-| --- | --- | --- | --- | --- |
-| `region_id` | UUID | yes | `gen_random_uuid()` | PK |
-| `page_id` | UUID | yes | | FK to `page.page_id`, cascade delete |
-| `x` | INT | yes | | |
-| `y` | INT | yes | | |
-| `width` | INT | yes | | |
-| `height` | INT | yes | | |
-| `created_at` | TIMESTAMP | no | `CURRENT_TIMESTAMP` | |
-| `updated_at` | TIMESTAMP | no | `CURRENT_TIMESTAMP` | update manually in API |
+| Column       | Type      | Required | Default             | Notes                                |
+| ------------ | --------- | -------- | ------------------- | ------------------------------------ |
+| `region_id`  | UUID      | yes      | `gen_random_uuid()` | PK                                   |
+| `page_id`    | UUID      | yes      |                     | FK to `page.page_id`, cascade delete |
+| `x`          | INT       | yes      |                     |                                      |
+| `y`          | INT       | yes      |                     |                                      |
+| `width`      | INT       | yes      |                     |                                      |
+| `height`     | INT       | yes      |                     |                                      |
+| `created_at` | TIMESTAMP | no       | `CURRENT_TIMESTAMP` |                                      |
+| `updated_at` | TIMESTAMP | no       | `CURRENT_TIMESTAMP` | update manually in API               |
 
 Indexes: `idx_page_region_page_id`
 
@@ -166,19 +189,19 @@ Primary key: `task_id`
 
 Columns:
 
-| Column | Type | Required | Default | Notes |
-| --- | --- | --- | --- | --- |
-| `task_id` | UUID | yes | `gen_random_uuid()` | PK |
-| `page_id` | UUID | yes | | FK to `page.page_id`, cascade delete |
-| `assigned_by_id` | UUID | no | | FK to `users.user_id`, set null |
-| `region_id` | UUID | no | | FK to `page_region.region_id`, set null |
-| `assistant_id` | UUID | no | | FK to `users.user_id`, set null |
-| `task_type` | VARCHAR(100) | yes | | |
-| `status` | VARCHAR(50) | yes | `pending` | check constraint |
-| `deadline` | TIMESTAMP | no | | |
-| `content` | TEXT | no | | |
-| `created_at` | TIMESTAMP | no | `CURRENT_TIMESTAMP` | |
-| `updated_at` | TIMESTAMP | no | `CURRENT_TIMESTAMP` | update manually in API |
+| Column           | Type         | Required | Default             | Notes                                   |
+| ---------------- | ------------ | -------- | ------------------- | --------------------------------------- |
+| `task_id`        | UUID         | yes      | `gen_random_uuid()` | PK                                      |
+| `page_id`        | UUID         | yes      |                     | FK to `page.page_id`, cascade delete    |
+| `assigned_by_id` | UUID         | no       |                     | FK to `users.user_id`, set null         |
+| `region_id`      | UUID         | no       |                     | FK to `page_region.region_id`, set null |
+| `assistant_id`   | UUID         | no       |                     | FK to `users.user_id`, set null         |
+| `task_type`      | VARCHAR(100) | yes      |                     |                                         |
+| `status`         | VARCHAR(50)  | yes      | `pending`           | check constraint                        |
+| `deadline`       | TIMESTAMP    | no       |                     |                                         |
+| `content`        | TEXT         | no       |                     |                                         |
+| `created_at`     | TIMESTAMP    | no       | `CURRENT_TIMESTAMP` |                                         |
+| `updated_at`     | TIMESTAMP    | no       | `CURRENT_TIMESTAMP` | update manually in API                  |
 
 Status values: `pending`, `assigned`, `in_progress`, `submitted`, `review`, `approved`, `needs_revision`, `completed`, `on_hold`, `cancelled`, `rejected`
 
@@ -192,18 +215,19 @@ Primary key: `version_id`
 
 Columns:
 
-| Column | Type | Required | Default | Notes |
-| --- | --- | --- | --- | --- |
-| `version_id` | UUID | yes | `gen_random_uuid()` | PK |
-| `page_id` | UUID | yes | | FK to `page.page_id`, cascade delete |
-| `image_url` | TEXT | yes | | Cloudinary secure_url |
-| `version_number` | INT | yes | | Auto-calculated by backend: MAX+1 per page |
-| `version_type` | VARCHAR(50) | yes | `submitted` | check constraint |
-| `created_at` | TIMESTAMP | no | `CURRENT_TIMESTAMP` | |
+| Column           | Type        | Required | Default             | Notes                                      |
+| ---------------- | ----------- | -------- | ------------------- | ------------------------------------------ |
+| `version_id`     | UUID        | yes      | `gen_random_uuid()` | PK                                         |
+| `page_id`        | UUID        | yes      |                     | FK to `page.page_id`, cascade delete       |
+| `image_url`      | TEXT        | yes      |                     | Cloudinary secure_url                      |
+| `version_number` | INT         | yes      |                     | Auto-calculated by backend: MAX+1 per page |
+| `version_type`   | VARCHAR(50) | yes      | `submitted`         | check constraint                           |
+| `created_at`     | TIMESTAMP   | no       | `CURRENT_TIMESTAMP` |                                            |
 
 Version type values: `original`, `submitted`, `approved`
 
 Rules:
+
 - Version 1 (`original`) is created when a page is first created by mangaka.
 - Each assistant submission creates a new version (`submitted`). Backend auto-calculates `version_number = MAX(version_number)+1 WHERE page_id`.
 - On reviewer approve, the version is updated to `approved`.
@@ -220,18 +244,18 @@ Primary key: `submission_id`
 
 Columns:
 
-| Column | Type | Required | Default | Notes |
-| --- | --- | --- | --- | --- |
-| `submission_id` | UUID | yes | `gen_random_uuid()` | PK |
-| `page_id` | UUID | yes | | FK to `page.page_id`, cascade delete |
-| `task_id` | UUID | yes | | FK to `page_task.task_id`, cascade delete |
-| `assistant_id` | UUID | yes | | FK to `users.user_id` (`fk_page_submission_assistant`), set null |
-| `file_url` | TEXT | yes | | Cloudinary secure_url of the submitted image |
-| `version_number` | INT | yes | | Matches `page_version.version_number` for this page |
-| `submission_status` | VARCHAR(50) | yes | `pending` | check constraint |
-| `submission_notes` | TEXT | no | | Assistant's notes when submitting |
-| `submitted_at` | TIMESTAMP | no | `CURRENT_TIMESTAMP` | |
-| `reviewed_at` | TIMESTAMP | no | | Set when reviewer acts |
+| Column              | Type        | Required | Default             | Notes                                                            |
+| ------------------- | ----------- | -------- | ------------------- | ---------------------------------------------------------------- |
+| `submission_id`     | UUID        | yes      | `gen_random_uuid()` | PK                                                               |
+| `page_id`           | UUID        | yes      |                     | FK to `page.page_id`, cascade delete                             |
+| `task_id`           | UUID        | yes      |                     | FK to `page_task.task_id`, cascade delete                        |
+| `assistant_id`      | UUID        | yes      |                     | FK to `users.user_id` (`fk_page_submission_assistant`), set null |
+| `file_url`          | TEXT        | yes      |                     | Cloudinary secure_url of the submitted image                     |
+| `version_number`    | INT         | yes      |                     | Matches `page_version.version_number` for this page              |
+| `submission_status` | VARCHAR(50) | yes      | `pending`           | check constraint                                                 |
+| `submission_notes`  | TEXT        | no       |                     | Assistant's notes when submitting                                |
+| `submitted_at`      | TIMESTAMP   | no       | `CURRENT_TIMESTAMP` |                                                                  |
+| `reviewed_at`       | TIMESTAMP   | no       |                     | Set when reviewer acts                                           |
 
 Submission status values: `pending`, `approved`, `rejected`, `needs_revision`
 
@@ -245,16 +269,17 @@ Primary key: `feedback_id`
 
 Columns:
 
-| Column | Type | Required | Default | Notes |
-| --- | --- | --- | --- | --- |
-| `feedback_id` | UUID | yes | `gen_random_uuid()` | PK |
-| `submission_id` | UUID | yes | | FK to `page_submission.submission_id`, cascade delete |
-| `mangaka_id` | UUID | no | | FK to `users.user_id` (`fk_feedback_mangaka`), set null |
-| `assistant_id` | UUID | no | | FK to `users.user_id` (`fk_feedback_assistant`), set null |
-| `content` | TEXT | yes | | |
-| `created_at` | TIMESTAMP | no | `CURRENT_TIMESTAMP` | |
+| Column          | Type      | Required | Default             | Notes                                                     |
+| --------------- | --------- | -------- | ------------------- | --------------------------------------------------------- |
+| `feedback_id`   | UUID      | yes      | `gen_random_uuid()` | PK                                                        |
+| `submission_id` | UUID      | yes      |                     | FK to `page_submission.submission_id`, cascade delete     |
+| `mangaka_id`    | UUID      | no       |                     | FK to `users.user_id` (`fk_feedback_mangaka`), set null   |
+| `assistant_id`  | UUID      | no       |                     | FK to `users.user_id` (`fk_feedback_assistant`), set null |
+| `content`       | TEXT      | yes      |                     |                                                           |
+| `created_at`    | TIMESTAMP | no       | `CURRENT_TIMESTAMP` |                                                           |
 
 Notes:
+
 - `task_id` column was removed — feedback is now scoped to a `submission_id`, not a task.
 - `status` column removed — feedback is a simple note, no workflow needed.
 - Auto-created by backend when reviewer calls `request-revision`.
@@ -267,19 +292,19 @@ Primary key: `annotation_id`
 
 Columns:
 
-| Column | Type | Required | Default | Notes |
-| --- | --- | --- | --- | --- |
-| `annotation_id` | UUID | yes | `gen_random_uuid()` | PK |
-| `page_id` | UUID | yes | | FK to `page.page_id`, cascade delete |
-| `user_id` | UUID | yes | | FK to `users.user_id`, cascade delete |
-| `region_id` | UUID | no | | FK to `page_region.region_id`, set null |
-| `task_id` | UUID | no | | FK to `page_task.task_id`, set null |
-| `x` | INT | no | | |
-| `y` | INT | no | | |
-| `content` | TEXT | no | | |
-| `status` | VARCHAR(50) | yes | `active` | check constraint |
-| `created_at` | TIMESTAMP | no | `CURRENT_TIMESTAMP` | |
-| `updated_at` | TIMESTAMP | no | `CURRENT_TIMESTAMP` | update manually in API |
+| Column          | Type        | Required | Default             | Notes                                   |
+| --------------- | ----------- | -------- | ------------------- | --------------------------------------- |
+| `annotation_id` | UUID        | yes      | `gen_random_uuid()` | PK                                      |
+| `page_id`       | UUID        | yes      |                     | FK to `page.page_id`, cascade delete    |
+| `user_id`       | UUID        | yes      |                     | FK to `users.user_id`, cascade delete   |
+| `region_id`     | UUID        | no       |                     | FK to `page_region.region_id`, set null |
+| `task_id`       | UUID        | no       |                     | FK to `page_task.task_id`, set null     |
+| `x`             | INT         | no       |                     |                                         |
+| `y`             | INT         | no       |                     |                                         |
+| `content`       | TEXT        | no       |                     |                                         |
+| `status`        | VARCHAR(50) | yes      | `active`            | check constraint                        |
+| `created_at`    | TIMESTAMP   | no       | `CURRENT_TIMESTAMP` |                                         |
+| `updated_at`    | TIMESTAMP   | no       | `CURRENT_TIMESTAMP` | update manually in API                  |
 
 Status values: `active`, `resolved`, `closed`, `archived`
 
@@ -291,18 +316,18 @@ Primary key: `session_id`
 
 Columns:
 
-| Column | Type | Required | Default | Notes |
-| --- | --- | --- | --- | --- |
-| `session_id` | UUID | yes | `gen_random_uuid()` | PK |
-| `series_id` | UUID | yes | | FK to `series.series_id`, cascade delete |
-| `chapter_id` | UUID | no | | FK to `chapter.chapter_id`, set null |
-| `created_by_user_id` | UUID | no | | FK to `users.user_id`, set null |
-| `name` | VARCHAR(255) | no | | |
-| `description` | TEXT | no | | |
-| `started_at` | TIMESTAMP | no | | |
-| `ended_at` | TIMESTAMP | no | | |
-| `created_at` | TIMESTAMP | no | `CURRENT_TIMESTAMP` | |
-| `status` | VARCHAR(50) | yes | `pending` | added by migration |
+| Column               | Type         | Required | Default             | Notes                                    |
+| -------------------- | ------------ | -------- | ------------------- | ---------------------------------------- |
+| `session_id`         | UUID         | yes      | `gen_random_uuid()` | PK                                       |
+| `series_id`          | UUID         | yes      |                     | FK to `series.series_id`, cascade delete |
+| `chapter_id`         | UUID         | no       |                     | FK to `chapter.chapter_id`, set null     |
+| `created_by_user_id` | UUID         | no       |                     | FK to `users.user_id`, set null          |
+| `name`               | VARCHAR(255) | no       |                     |                                          |
+| `description`        | TEXT         | no       |                     |                                          |
+| `started_at`         | TIMESTAMP    | no       |                     |                                          |
+| `ended_at`           | TIMESTAMP    | no       |                     |                                          |
+| `created_at`         | TIMESTAMP    | no       | `CURRENT_TIMESTAMP` |                                          |
+| `status`             | VARCHAR(50)  | yes      | `pending`           | added by migration                       |
 
 Status values: `pending`, `in_progress`, `completed`, `finished`, `paused`, `cancelled`
 
@@ -316,16 +341,16 @@ Primary key: `vote_id`
 
 Columns:
 
-| Column | Type | Required | Default | Notes |
-| --- | --- | --- | --- | --- |
-| `vote_id` | UUID | yes | `gen_random_uuid()` | PK |
-| `voter_id` | UUID | yes | | FK to `users.user_id`, cascade delete |
-| `session_id` | UUID | no | | FK to `review_session.session_id`, cascade delete |
-| `decision` | VARCHAR(50) | no | | |
-| `score` | INT | no | | check: null or 1-10 |
-| `note` | TEXT | no | | |
-| `created_at` | TIMESTAMP | no | `CURRENT_TIMESTAMP` | |
-| `status` | VARCHAR(50) | yes | `submitted` | added by migration |
+| Column       | Type        | Required | Default             | Notes                                             |
+| ------------ | ----------- | -------- | ------------------- | ------------------------------------------------- |
+| `vote_id`    | UUID        | yes      | `gen_random_uuid()` | PK                                                |
+| `voter_id`   | UUID        | yes      |                     | FK to `users.user_id`, cascade delete             |
+| `session_id` | UUID        | no       |                     | FK to `review_session.session_id`, cascade delete |
+| `decision`   | VARCHAR(50) | no       |                     |                                                   |
+| `score`      | INT         | no       |                     | check: null or 1-10                               |
+| `note`       | TEXT        | no       |                     |                                                   |
+| `created_at` | TIMESTAMP   | no       | `CURRENT_TIMESTAMP` |                                                   |
+| `status`     | VARCHAR(50) | yes      | `submitted`         | added by migration                                |
 
 Status values: `submitted`, `verified`
 
@@ -337,16 +362,16 @@ Primary key: `period_id`
 
 Columns:
 
-| Column | Type | Required | Default | Notes |
-| --- | --- | --- | --- | --- |
-| `period_id` | UUID | yes | `gen_random_uuid()` | PK |
-| `name` | VARCHAR(255) | yes | | |
-| `period_type` | VARCHAR(50) | no | | |
-| `start_date` | DATE | yes | | |
-| `end_date` | DATE | yes | | |
-| `calculated_at` | TIMESTAMP | no | | |
-| `created_at` | TIMESTAMP | no | `CURRENT_TIMESTAMP` | |
-| `status` | VARCHAR(50) | yes | `pending` | added by migration |
+| Column          | Type         | Required | Default             | Notes              |
+| --------------- | ------------ | -------- | ------------------- | ------------------ |
+| `period_id`     | UUID         | yes      | `gen_random_uuid()` | PK                 |
+| `name`          | VARCHAR(255) | yes      |                     |                    |
+| `period_type`   | VARCHAR(50)  | no       |                     |                    |
+| `start_date`    | DATE         | yes      |                     |                    |
+| `end_date`      | DATE         | yes      |                     |                    |
+| `calculated_at` | TIMESTAMP    | no       |                     |                    |
+| `created_at`    | TIMESTAMP    | no       | `CURRENT_TIMESTAMP` |                    |
+| `status`        | VARCHAR(50)  | yes      | `pending`           | added by migration |
 
 Status values: `pending`, `calculating`, `completed`, `archived`
 
@@ -358,15 +383,15 @@ Primary key: `series_ranking_id`
 
 Columns:
 
-| Column | Type | Required | Default | Notes |
-| --- | --- | --- | --- | --- |
-| `series_ranking_id` | UUID | yes | `gen_random_uuid()` | PK |
-| `period_id` | UUID | yes | | FK to `ranking_period.period_id`, cascade delete |
-| `series_id` | UUID | yes | | FK to `series.series_id`, cascade delete |
-| `rank_position` | INT | no | | |
-| `score` | NUMERIC(10,2) | no | `0` | |
-| `total_vote` | INT | no | `0` | |
-| `created_at` | TIMESTAMP | no | `CURRENT_TIMESTAMP` | |
+| Column              | Type          | Required | Default             | Notes                                            |
+| ------------------- | ------------- | -------- | ------------------- | ------------------------------------------------ |
+| `series_ranking_id` | UUID          | yes      | `gen_random_uuid()` | PK                                               |
+| `period_id`         | UUID          | yes      |                     | FK to `ranking_period.period_id`, cascade delete |
+| `series_id`         | UUID          | yes      |                     | FK to `series.series_id`, cascade delete         |
+| `rank_position`     | INT           | no       |                     |                                                  |
+| `score`             | NUMERIC(10,2) | no       | `0`                 |                                                  |
+| `total_vote`        | INT           | no       | `0`                 |                                                  |
+| `created_at`        | TIMESTAMP     | no       | `CURRENT_TIMESTAMP` |                                                  |
 
 Unique constraints: `UNIQUE (period_id, series_id)`
 
@@ -378,16 +403,16 @@ Primary key: `chapter_ranking_id`
 
 Columns:
 
-| Column | Type | Required | Default | Notes |
-| --- | --- | --- | --- | --- |
-| `chapter_ranking_id` | UUID | yes | `gen_random_uuid()` | PK |
-| `period_id` | UUID | yes | | FK to `ranking_period.period_id`, cascade delete |
-| `series_id` | UUID | yes | | FK to `series.series_id`, cascade delete |
-| `chapter_id` | UUID | yes | | FK to `chapter.chapter_id`, cascade delete |
-| `rank_position` | INT | no | | |
-| `score` | NUMERIC(10,2) | no | `0` | |
-| `total_vote` | INT | no | `0` | |
-| `created_at` | TIMESTAMP | no | `CURRENT_TIMESTAMP` | |
+| Column               | Type          | Required | Default             | Notes                                            |
+| -------------------- | ------------- | -------- | ------------------- | ------------------------------------------------ |
+| `chapter_ranking_id` | UUID          | yes      | `gen_random_uuid()` | PK                                               |
+| `period_id`          | UUID          | yes      |                     | FK to `ranking_period.period_id`, cascade delete |
+| `series_id`          | UUID          | yes      |                     | FK to `series.series_id`, cascade delete         |
+| `chapter_id`         | UUID          | yes      |                     | FK to `chapter.chapter_id`, cascade delete       |
+| `rank_position`      | INT           | no       |                     |                                                  |
+| `score`              | NUMERIC(10,2) | no       | `0`                 |                                                  |
+| `total_vote`         | INT           | no       | `0`                 |                                                  |
+| `created_at`         | TIMESTAMP     | no       | `CURRENT_TIMESTAMP` |                                                  |
 
 Unique constraints: `UNIQUE (period_id, chapter_id)`
 
@@ -399,18 +424,18 @@ Primary key: `manuscript_id`
 
 Columns:
 
-| Column | Type | Required | Default | Notes |
-| --- | --- | --- | --- | --- |
-| `manuscript_id` | UUID | yes | `gen_random_uuid()` | PK |
-| `mangaka_id` | UUID | yes | | FK to `users.user_id`, cascade delete |
-| `series_id` | UUID | yes | | FK to `series.series_id`, cascade delete |
-| `chapter_id` | UUID | no | | FK to `chapter.chapter_id`, set null |
-| `title` | VARCHAR(255) | no | | |
-| `content` | TEXT | no | | |
-| `file_url` | TEXT | no | | |
-| `status` | VARCHAR(50) | yes | `draft` | check constraint |
-| `created_at` | TIMESTAMP | no | `CURRENT_TIMESTAMP` | |
-| `updated_at` | TIMESTAMP | no | `CURRENT_TIMESTAMP` | update manually in API |
+| Column          | Type         | Required | Default             | Notes                                    |
+| --------------- | ------------ | -------- | ------------------- | ---------------------------------------- |
+| `manuscript_id` | UUID         | yes      | `gen_random_uuid()` | PK                                       |
+| `mangaka_id`    | UUID         | yes      |                     | FK to `users.user_id`, cascade delete    |
+| `series_id`     | UUID         | yes      |                     | FK to `series.series_id`, cascade delete |
+| `chapter_id`    | UUID         | no       |                     | FK to `chapter.chapter_id`, set null     |
+| `title`         | VARCHAR(255) | no       |                     |                                          |
+| `content`       | TEXT         | no       |                     |                                          |
+| `file_url`      | TEXT         | no       |                     |                                          |
+| `status`        | VARCHAR(50)  | yes      | `draft`             | check constraint                         |
+| `created_at`    | TIMESTAMP    | no       | `CURRENT_TIMESTAMP` |                                          |
+| `updated_at`    | TIMESTAMP    | no       | `CURRENT_TIMESTAMP` | update manually in API                   |
 
 Status values: `draft`, `submitted`, `in_review`, `needs_revision`, `approved`, `published`, `archived`, `hidden`, `rejected`, `deleted`
 
@@ -424,16 +449,16 @@ Primary key: `file_id`
 
 Columns:
 
-| Column | Type | Required | Default | Notes |
-| --- | --- | --- | --- | --- |
-| `file_id` | UUID | yes | `gen_random_uuid()` | PK |
-| `manuscript_id` | UUID | yes | | FK to `manuscript.manuscript_id`, cascade delete |
-| `file_url` | TEXT | yes | | |
-| `file_type` | VARCHAR(50) | no | | |
-| `file_name` | VARCHAR(255) | no | | |
-| `description` | TEXT | no | | |
-| `uploaded_at` | TIMESTAMP | no | `CURRENT_TIMESTAMP` | |
-| `status` | VARCHAR(50) | yes | `uploaded` | added by migration |
+| Column          | Type         | Required | Default             | Notes                                            |
+| --------------- | ------------ | -------- | ------------------- | ------------------------------------------------ |
+| `file_id`       | UUID         | yes      | `gen_random_uuid()` | PK                                               |
+| `manuscript_id` | UUID         | yes      |                     | FK to `manuscript.manuscript_id`, cascade delete |
+| `file_url`      | TEXT         | yes      |                     |                                                  |
+| `file_type`     | VARCHAR(50)  | no       |                     |                                                  |
+| `file_name`     | VARCHAR(255) | no       |                     |                                                  |
+| `description`   | TEXT         | no       |                     |                                                  |
+| `uploaded_at`   | TIMESTAMP    | no       | `CURRENT_TIMESTAMP` |                                                  |
+| `status`        | VARCHAR(50)  | yes      | `uploaded`          | added by migration                               |
 
 Status values: `uploaded`, `validated`, `deleted`
 
@@ -444,71 +469,140 @@ Indexes: `idx_manuscript_file_manuscript_id`
 When implementing validation, mirror these in `src/constants/status.js`.
 
 ```js
-const USER_STATUS = ['active', 'suspended', 'banned', 'inactive'];
-const SERIES_STATUS = ['draft', 'pending_review', 'approved', 'rejected', 'published', 'archived', 'hidden', 'banned', 'deleted'];
-const CHAPTER_STATUS = ['draft', 'pending_review', 'approved', 'rejected', 'published', 'archived', 'hidden', 'banned', 'deleted'];
-const PAGE_STATUS = ['draft', 'in_progress', 'review', 'completed', 'published', 'archived', 'hidden', 'banned', 'deleted'];
-const PAGE_TASK_STATUS = ['pending', 'assigned', 'in_progress', 'submitted', 'review', 'approved', 'needs_revision', 'completed', 'on_hold', 'cancelled', 'rejected'];
-const PAGE_VERSION_TYPE = ['original', 'submitted', 'approved'];
-const PAGE_SUBMISSION_STATUS = ['pending', 'approved', 'rejected', 'needs_revision'];
-const ANNOTATION_STATUS = ['active', 'resolved', 'closed', 'archived'];
-const REVIEW_SESSION_STATUS = ['pending', 'in_progress', 'completed', 'finished', 'paused', 'cancelled'];
-const VOTE_STATUS = ['submitted', 'verified'];
-const MANUSCRIPT_STATUS = ['draft', 'submitted', 'in_review', 'needs_revision', 'approved', 'published', 'archived', 'hidden', 'rejected', 'deleted'];
-const MANUSCRIPT_FILE_STATUS = ['uploaded', 'validated', 'deleted'];
-const RANKING_PERIOD_STATUS = ['pending', 'calculating', 'completed', 'archived'];
+const USER_STATUS = ["active", "suspended", "banned", "inactive"];
+const SERIES_STATUS = [
+  "draft",
+  "pending_review",
+  "approved",
+  "rejected",
+  "published",
+  "archived",
+  "hidden",
+  "banned",
+  "deleted",
+];
+const CHAPTER_STATUS = [
+  "draft",
+  "pending_review",
+  "approved",
+  "rejected",
+  "published",
+  "archived",
+  "hidden",
+  "banned",
+  "deleted",
+];
+const PAGE_STATUS = [
+  "draft",
+  "in_progress",
+  "review",
+  "completed",
+  "published",
+  "archived",
+  "hidden",
+  "banned",
+  "deleted",
+];
+const PAGE_TASK_STATUS = [
+  "pending",
+  "assigned",
+  "in_progress",
+  "submitted",
+  "review",
+  "approved",
+  "needs_revision",
+  "completed",
+  "on_hold",
+  "cancelled",
+  "rejected",
+];
+const PAGE_VERSION_TYPE = ["original", "submitted", "approved"];
+const PAGE_SUBMISSION_STATUS = [
+  "pending",
+  "approved",
+  "rejected",
+  "needs_revision",
+];
+const ANNOTATION_STATUS = ["active", "resolved", "closed", "archived"];
+const REVIEW_SESSION_STATUS = [
+  "pending",
+  "in_progress",
+  "completed",
+  "finished",
+  "paused",
+  "cancelled",
+];
+const VOTE_STATUS = ["submitted", "verified"];
+const MANUSCRIPT_STATUS = [
+  "draft",
+  "submitted",
+  "in_review",
+  "needs_revision",
+  "approved",
+  "published",
+  "archived",
+  "hidden",
+  "rejected",
+  "deleted",
+];
+const MANUSCRIPT_FILE_STATUS = ["uploaded", "validated", "deleted"];
+const RECOVERY_PROPOSAL_STATUS = ["pending", "approved", "rejected"];
+const RANKING_PERIOD_STATUS = [
+  "pending",
+  "calculating",
+  "completed",
+  "archived",
+];
 ```
 
 ## Supabase Relationship Notes
 
-Use table names exactly as defined: `users`, `notification`, `series`, `series_member`, `chapter`, `page`, `page_region`, `page_task`, `page_version`, `page_submission`, `page_task_feedback`, `annotation`, `review_session`, `vote`, `ranking_period`, `series_ranking`, `chapter_ranking`, `manuscript`, `manuscript_file`.
+Use table names exactly as defined: `users`, `notification`, `series`, `series_member`, `chapter`, `page`, `page_region`, `page_task`, `page_version`, `page_submission`, `page_task_feedback`, `annotation`, `review_session`, `vote`, `ranking_period`, `series_ranking`, `chapter_ranking`, `manuscript`, `manuscript_file`, `recovery_proposal`.
 
 Important foreign key constraint names for joined selects:
 
-| From table | Column | Constraint | References |
-| --- | --- | --- | --- |
-| `notification` | `user_id` | `fk_notification_user` | `users.user_id` |
-| `series_member` | `series_id` | `fk_series_member_series` | `series.series_id` |
-| `series_member` | `user_id` | `fk_series_member_user` | `users.user_id` |
-| `chapter` | `series_id` | `fk_chapter_series` | `series.series_id` |
-| `page` | `chapter_id` | `fk_page_chapter` | `chapter.chapter_id` |
-| `page_region` | `page_id` | `fk_page_region_page` | `page.page_id` |
-| `page_task` | `page_id` | `fk_page_task_page` | `page.page_id` |
-| `page_task` | `assigned_by_id` | `fk_page_task_assigned_by` | `users.user_id` |
-| `page_task` | `region_id` | `fk_page_task_region` | `page_region.region_id` |
-| `page_task` | `assistant_id` | `fk_page_task_assistant` | `users.user_id` |
-| `page_version` | `page_id` | `fk_page_version_page` | `page.page_id` |
-| `page_submission` | `page_id` | `fk_page_submission_page` | `page.page_id` |
-| `page_submission` | `task_id` | `fk_page_submission_task` | `page_task.task_id` |
-| `page_submission` | `assistant_id` | `fk_page_submission_assistant` | `users.user_id` |
-| `page_task_feedback` | `submission_id` | `fk_feedback_submission` | `page_submission.submission_id` |
-| `page_task_feedback` | `mangaka_id` | `fk_feedback_mangaka` | `users.user_id` |
-| `page_task_feedback` | `assistant_id` | `fk_feedback_assistant` | `users.user_id` |
-| `annotation` | `page_id` | `fk_annotation_page` | `page.page_id` |
-| `annotation` | `user_id` | `fk_annotation_user` | `users.user_id` |
-| `annotation` | `region_id` | `fk_annotation_region` | `page_region.region_id` |
-| `annotation` | `task_id` | `fk_annotation_task` | `page_task.task_id` |
-| `review_session` | `series_id` | `fk_review_series` | `series.series_id` |
-| `review_session` | `chapter_id` | `fk_review_chapter` | `chapter.chapter_id` |
-| `review_session` | `created_by_user_id` | `fk_review_created_by` | `users.user_id` |
-| `vote` | `voter_id` | `fk_vote_user` | `users.user_id` |
-| `vote` | `session_id` | `fk_vote_session` | `review_session.session_id` |
-| `series_ranking` | `period_id` | `fk_series_ranking_period` | `ranking_period.period_id` |
-| `series_ranking` | `series_id` | `fk_series_ranking_series` | `series.series_id` |
-| `chapter_ranking` | `period_id` | `fk_chapter_ranking_period` | `ranking_period.period_id` |
-| `chapter_ranking` | `series_id` | `fk_chapter_ranking_series` | `series.series_id` |
-| `chapter_ranking` | `chapter_id` | `fk_chapter_ranking_chapter` | `chapter.chapter_id` |
-| `manuscript` | `mangaka_id` | `fk_manuscript_mangaka` | `users.user_id` |
-| `manuscript` | `series_id` | `fk_manuscript_series` | `series.series_id` |
-| `manuscript` | `chapter_id` | `fk_manuscript_chapter` | `chapter.chapter_id` |
-| `manuscript_file` | `manuscript_id` | `fk_manuscript_file_manuscript` | `manuscript.manuscript_id` |
+| From table           | Column               | Constraint                      | References                      |
+| -------------------- | -------------------- | ------------------------------- | ------------------------------- |
+| `notification`       | `user_id`            | `fk_notification_user`          | `users.user_id`                 |
+| `series_member`      | `series_id`          | `fk_series_member_series`       | `series.series_id`              |
+| `series_member`      | `user_id`            | `fk_series_member_user`         | `users.user_id`                 |
+| `chapter`            | `series_id`          | `fk_chapter_series`             | `series.series_id`              |
+| `page`               | `chapter_id`         | `fk_page_chapter`               | `chapter.chapter_id`            |
+| `page_region`        | `page_id`            | `fk_page_region_page`           | `page.page_id`                  |
+| `page_task`          | `page_id`            | `fk_page_task_page`             | `page.page_id`                  |
+| `page_task`          | `assigned_by_id`     | `fk_page_task_assigned_by`      | `users.user_id`                 |
+| `page_task`          | `region_id`          | `fk_page_task_region`           | `page_region.region_id`         |
+| `page_task`          | `assistant_id`       | `fk_page_task_assistant`        | `users.user_id`                 |
+| `page_version`       | `page_id`            | `fk_page_version_page`          | `page.page_id`                  |
+| `page_submission`    | `page_id`            | `fk_page_submission_page`       | `page.page_id`                  |
+| `page_submission`    | `task_id`            | `fk_page_submission_task`       | `page_task.task_id`             |
+| `page_submission`    | `assistant_id`       | `fk_page_submission_assistant`  | `users.user_id`                 |
+| `page_task_feedback` | `submission_id`      | `fk_feedback_submission`        | `page_submission.submission_id` |
+| `page_task_feedback` | `mangaka_id`         | `fk_feedback_mangaka`           | `users.user_id`                 |
+| `page_task_feedback` | `assistant_id`       | `fk_feedback_assistant`         | `users.user_id`                 |
+| `annotation`         | `page_id`            | `fk_annotation_page`            | `page.page_id`                  |
+| `annotation`         | `user_id`            | `fk_annotation_user`            | `users.user_id`                 |
+| `annotation`         | `region_id`          | `fk_annotation_region`          | `page_region.region_id`         |
+| `annotation`         | `task_id`            | `fk_annotation_task`            | `page_task.task_id`             |
+| `review_session`     | `series_id`          | `fk_review_series`              | `series.series_id`              |
+| `review_session`     | `chapter_id`         | `fk_review_chapter`             | `chapter.chapter_id`            |
+| `review_session`     | `created_by_user_id` | `fk_review_created_by`          | `users.user_id`                 |
+| `vote`               | `voter_id`           | `fk_vote_user`                  | `users.user_id`                 |
+| `vote`               | `session_id`         | `fk_vote_session`               | `review_session.session_id`     |
+| `series_ranking`     | `period_id`          | `fk_series_ranking_period`      | `ranking_period.period_id`      |
+| `series_ranking`     | `series_id`          | `fk_series_ranking_series`      | `series.series_id`              |
+| `chapter_ranking`    | `period_id`          | `fk_chapter_ranking_period`     | `ranking_period.period_id`      |
+| `chapter_ranking`    | `series_id`          | `fk_chapter_ranking_series`     | `series.series_id`              |
+| `chapter_ranking`    | `chapter_id`         | `fk_chapter_ranking_chapter`    | `chapter.chapter_id`            |
+| `manuscript`         | `mangaka_id`         | `fk_manuscript_mangaka`         | `users.user_id`                 |
+| `manuscript`         | `series_id`          | `fk_manuscript_series`          | `series.series_id`              |
+| `manuscript`         | `chapter_id`         | `fk_manuscript_chapter`         | `chapter.chapter_id`            |
+| `manuscript_file`    | `manuscript_id`      | `fk_manuscript_file_manuscript` | `manuscript.manuscript_id`      |
 
 When a table has multiple FKs to `users`, join with constraint names to avoid ambiguity:
 
 ```js
-supabase
-  .from('page_task')
-  .select(`
+supabase.from("page_task").select(`
     *,
     page:page_id (*),
     region:region_id (*),
@@ -535,4 +629,3 @@ Before writing a repository query:
 6. Validate status values with constants.
 7. Update `updated_at` manually for update APIs.
 8. For list APIs, prefer indexed filters where possible.
-
