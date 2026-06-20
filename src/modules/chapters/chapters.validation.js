@@ -1,7 +1,10 @@
 ﻿const { z } = require('zod');
 const { CHAPTER_STATUS } = require('../../constants/status');
 
-const uuidParam = z.string().uuid({ message: 'Invalid UUID' });
+const uuidParam = z.string().regex(
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+  { message: 'Invalid UUID' },
+);
 
 const createChapterSchema = z.object({
   body: z.object({
@@ -35,6 +38,9 @@ const listChaptersSchema = z.object({
   query: z.object({
     status: z.enum(CHAPTER_STATUS).optional(),
     keyword: z.string().optional(),
+    series_id: uuidParam.optional(),
+    seriesId: uuidParam.optional(),
+    series: uuidParam.optional(),
     page: z.string().optional(),
     limit: z.string().optional(),
     sort: z.string().optional(),

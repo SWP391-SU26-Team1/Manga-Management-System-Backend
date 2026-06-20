@@ -6,7 +6,7 @@ const listChapters = async (req, res, next) => {
   try {
     const { page, limit, offset } = parsePagination(req.query);
     const { status, keyword, sort, order } = req.query;
-    const seriesId = req.params.seriesId;
+    const seriesId = req.params.seriesId || req.query.series_id || req.query.seriesId || req.query.series;
     const { data, total } = await service.listChapters({ status, keyword, seriesId, offset, limit, sort, order });
     return res.status(200).json({ success: true, message: 'Success', data, pagination: buildPaginationMeta(page, limit, total) });
   } catch (error) { next(error); }

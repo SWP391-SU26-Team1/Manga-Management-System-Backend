@@ -132,7 +132,10 @@ const updateAdminSeriesStatus = makeStatusUpdateHandler('series', 'series_id', '
 const deleteAdminSeries = makeDeleteHandler('series', 'series_id', 'seriesId');
 
 // Chapters
-const listAdminChapters = makeListHandler('chapter');
+const listAdminChapters = makeListHandler(
+  'chapter',
+  '*, series:series!fk_chapter_series(series_id, title)',
+);
 const getAdminChapterById = makeGetByIdHandler(chaptersRepo, 'chapterId');
 const updateAdminChapterStatus = makeStatusUpdateHandler('chapter', 'chapter_id', 'chapterId');
 const deleteAdminChapter = makeDeleteHandler('chapter', 'chapter_id', 'chapterId');
@@ -144,7 +147,13 @@ const updateAdminPageStatus = makeStatusUpdateHandler('page', 'page_id', 'pageId
 const deleteAdminPage = makeDeleteHandler('page', 'page_id', 'pageId');
 
 // Tasks
-const listAdminTasks = makeListHandler('page_task');
+const listAdminTasks = makeListHandler(
+  'page_task',
+  `*,
+  page:page!fk_page_task_page(page_id, page_number, chapter_id),
+  assistant:users!fk_page_task_assistant(user_id, username, name, avatar_url),
+  assigned_by:users!fk_page_task_assigned_by(user_id, username, name, avatar_url)`,
+);
 const getAdminTaskById = makeGetByIdHandler(pageTasksRepo, 'taskId');
 const updateAdminTask = async (req, res, next) => {
   try {
@@ -168,7 +177,13 @@ const updateAdminAnnotationStatus = makeStatusUpdateHandler('annotation', 'annot
 const deleteAdminAnnotation = makeDeleteHandler('annotation', 'annotation_id', 'annotationId');
 
 // Review Sessions
-const listAdminSessions = makeListHandler('review_session');
+const listAdminSessions = makeListHandler(
+  'review_session',
+  `*,
+  series:series_id(series_id, title),
+  chapter:chapter_id(chapter_id, chapter_number, title),
+  created_by:users!fk_review_created_by(user_id, username, name)`,
+);
 const getAdminSessionById = makeGetByIdHandler(reviewSessionsRepo, 'sessionId');
 const createAdminSession = async (req, res, next) => {
   try {
@@ -186,7 +201,12 @@ const updateAdminSessionStatus = makeStatusUpdateHandler('review_session', 'sess
 const deleteAdminSession = makeDeleteHandler('review_session', 'session_id', 'sessionId');
 
 // Votes
-const listAdminVotes = makeListHandler('vote');
+const listAdminVotes = makeListHandler(
+  'vote',
+  `*,
+  voter:users!fk_vote_user(user_id, username, name, email),
+  session:review_session!fk_vote_session(session_id, name, status, series_id, chapter_id)`,
+);
 const getAdminVoteById = makeGetByIdHandler(votesRepo, 'voteId');
 const updateAdminVote = async (req, res, next) => {
   try {
@@ -226,7 +246,12 @@ const updateAdminPeriodStatus = makeStatusUpdateHandler('ranking_period', 'perio
 const deleteAdminPeriod = makeDeleteHandler('ranking_period', 'period_id', 'periodId');
 
 // Series/Chapter Rankings
-const listAdminSeriesRankings = makeListHandler('series_ranking');
+const listAdminSeriesRankings = makeListHandler(
+  'series_ranking',
+  `*,
+  period:ranking_period!fk_series_ranking_period(period_id, name, status),
+  series:series!fk_series_ranking_series(series_id, title, cover_image_url)`,
+);
 const createAdminSeriesRanking = async (req, res, next) => {
   try {
     const { data, error } = await supabase.from('series_ranking').insert(req.body).select().single();
@@ -243,7 +268,13 @@ const updateAdminSeriesRanking = async (req, res, next) => {
 };
 const deleteAdminSeriesRanking = makeDeleteHandler('series_ranking', 'series_ranking_id', 'seriesRankingId');
 
-const listAdminChapterRankings = makeListHandler('chapter_ranking');
+const listAdminChapterRankings = makeListHandler(
+  'chapter_ranking',
+  `*,
+  period:ranking_period!fk_chapter_ranking_period(period_id, name, status),
+  series:series!fk_chapter_ranking_series(series_id, title),
+  chapter:chapter!fk_chapter_ranking_chapter(chapter_id, chapter_number, title)`,
+);
 const createAdminChapterRanking = async (req, res, next) => {
   try {
     const { data, error } = await supabase.from('chapter_ranking').insert(req.body).select().single();
@@ -261,7 +292,10 @@ const updateAdminChapterRanking = async (req, res, next) => {
 const deleteAdminChapterRanking = makeDeleteHandler('chapter_ranking', 'chapter_ranking_id', 'chapterRankingId');
 
 // Notifications
-const listAdminNotifications = makeListHandler('notification');
+const listAdminNotifications = makeListHandler(
+  'notification',
+  '*, user:users!fk_notification_user(user_id, username, name, email, role)',
+);
 const getAdminNotificationById = async (req, res, next) => {
   try {
     const { data, error } = await supabase.from('notification').select('*').eq('notification_id', req.params.notificationId).maybeSingle();
@@ -295,6 +329,9 @@ const dashboardUsers = async (req, res, next) => {
 };
 const dashboardSeries = async (req, res, next) => {
   try { return sendSuccess(res, 200, await dashboardSvc.getSeriesStats(), 'Success'); } catch (e) { next(e); }
+};
+const dashboardChapters = async (req, res, next) => {
+  try { return sendSuccess(res, 200, await dashboardSvc.getChapterStats(), 'Success'); } catch (e) { next(e); }
 };
 const dashboardTasks = async (req, res, next) => {
   try { return sendSuccess(res, 200, await dashboardSvc.getTaskStats(), 'Success'); } catch (e) { next(e); }
@@ -549,7 +586,7 @@ module.exports = {
   listAdminSeriesRankings, createAdminSeriesRanking, updateAdminSeriesRanking, deleteAdminSeriesRanking,
   listAdminChapterRankings, createAdminChapterRanking, updateAdminChapterRanking, deleteAdminChapterRanking,
   listAdminNotifications, getAdminNotificationById, createAdminNotification, updateAdminNotification, deleteAdminNotification,
-  dashboardOverview, dashboardUsers, dashboardSeries, dashboardTasks, dashboardReviews, dashboardRankings, dashboardNotifications,
+  dashboardOverview, dashboardUsers, dashboardSeries, dashboardChapters, dashboardTasks, dashboardReviews, dashboardRankings, dashboardNotifications,
   exportFullSystem, exportSeries, exportUsers, exportRankings,
   importUsers, importSeries, importRankings, importFullSystem,
   getActivityLogs,

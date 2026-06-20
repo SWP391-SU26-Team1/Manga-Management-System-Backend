@@ -49,6 +49,16 @@ const getSeriesStats = async () => {
   return { total: data?.length ?? 0, by_status: byStatus };
 };
 
+const getChapterStats = async () => {
+  const { data, error } = await supabase.from('chapter').select('status');
+  if (error) throw error;
+  const byStatus = (data || []).reduce((acc, chapter) => {
+    acc[chapter.status] = (acc[chapter.status] ?? 0) + 1;
+    return acc;
+  }, {});
+  return { total: data?.length ?? 0, by_status: byStatus };
+};
+
 const getTaskStats = async () => {
   const { data, error } = await supabase.from('page_task').select('status, deadline, task_type');
   if (error) throw error;
@@ -82,4 +92,4 @@ const getNotificationStats = async () => {
   return { total: data?.length ?? 0, unread, by_type: byType };
 };
 
-module.exports = { getOverview, getUserStats, getSeriesStats, getTaskStats, getReviewStats, getRankingStats, getNotificationStats };
+module.exports = { getOverview, getUserStats, getSeriesStats, getChapterStats, getTaskStats, getReviewStats, getRankingStats, getNotificationStats };

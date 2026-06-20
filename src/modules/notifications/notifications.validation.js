@@ -1,5 +1,8 @@
 ﻿const { z } = require('zod');
-const uuidParam = z.string().uuid({ message: 'Invalid UUID' });
+const uuidParam = z.string().regex(
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+  { message: 'Invalid UUID' },
+);
 
 const createNotificationSchema = z.object({
   body: z.object({
