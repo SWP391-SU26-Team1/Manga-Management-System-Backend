@@ -1,7 +1,10 @@
 ﻿const { z } = require('zod');
 const { RANKING_PERIOD_STATUS } = require('../../constants/status');
 
-const uuidParam = z.string().uuid({ message: 'Invalid UUID' });
+const uuidParam = z.string().regex(
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+  { message: 'Invalid UUID' },
+);
 
 const createPeriodSchema = z.object({
   body: z.object({

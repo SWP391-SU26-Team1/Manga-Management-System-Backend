@@ -1,7 +1,11 @@
 ﻿const { z } = require('zod');
 const { SERIES_STATUS } = require('../../constants/status');
 
-const uuidParam = z.string().uuid({ message: 'Invalid UUID' });
+// PostgreSQL accepts UUID-shaped values even when they do not encode an RFC version.
+const uuidParam = z.string().regex(
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+  { message: 'Invalid UUID' },
+);
 
 const createSeriesSchema = z.object({
   body: z.object({

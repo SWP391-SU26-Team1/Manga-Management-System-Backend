@@ -326,6 +326,7 @@ router.delete(
 router.get("/dashboard/overview", ctrl.dashboardOverview);
 router.get("/dashboard/users", ctrl.dashboardUsers);
 router.get("/dashboard/series", ctrl.dashboardSeries);
+router.get("/dashboard/chapters", ctrl.dashboardChapters);
 router.get("/dashboard/tasks", ctrl.dashboardTasks);
 router.get("/dashboard/reviews", ctrl.dashboardReviews);
 router.get("/dashboard/rankings", ctrl.dashboardRankings);
