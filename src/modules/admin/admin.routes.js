@@ -160,11 +160,7 @@ router.delete(
   validate(vFeedbacks.feedbackIdParamSchema),
   ctrl.deleteAdminFeedback,
 );
-router.delete(
-  "/page-task-feedbacks/:feedbackId",
-  validate(vFeedbacks.feedbackIdParamSchema),
-  ctrl.deleteAdminFeedback,
-);
+
 
 // Annotations
 router.get("/annotations", ctrl.listAdminAnnotations);
@@ -210,6 +206,23 @@ router.delete(
   "/review-sessions/:sessionId",
   validate(vReviewSessions.sessionIdParamSchema),
   ctrl.deleteAdminSession,
+);
+
+// Admin Decision Workflow (Chủ tịch HĐBT)
+router.post(
+  "/review-sessions/:sessionId/finalize",
+  validate(vReviewSessions.sessionIdParamSchema),
+  ctrl.finalizeAdminSession,
+);
+router.get(
+  "/review-sessions/:sessionId/result",
+  validate(vReviewSessions.sessionIdParamSchema),
+  ctrl.getAdminSessionResult,
+);
+router.patch(
+  "/review-sessions/:sessionId/apply-decision",
+  validate(vReviewSessions.sessionIdParamSchema),
+  ctrl.applyAdminSessionDecision,
 );
 
 // Votes
