@@ -221,7 +221,7 @@ router.get(
 );
 router.patch(
   "/review-sessions/:sessionId/apply-decision",
-  validate(vReviewSessions.sessionIdParamSchema),
+  validate(vReviewSessions.applyDecisionSchema),
   ctrl.applyAdminSessionDecision,
 );
 

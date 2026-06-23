@@ -18,6 +18,7 @@ const { parsePagination, buildPaginationMeta } = require('../../utils/pagination
 const supabase = require('../../config/supabase');
 const bcrypt = require('bcryptjs');
 const AppError = require('../../utils/appError');
+const { CHAPTER_STATUS, SERIES_STATUS } = require('../../constants/status');
 
 // --- Users ---
 const listUsers = async (req, res, next) => {
@@ -295,7 +296,6 @@ const getAdminSessionResult = async (req, res, next) => {
 const applyAdminSessionDecision = async (req, res, next) => {
   try {
     const { status: newStatus, note } = req.body;
-    if (!newStatus) return next(new AppError('status is required (e.g. published, approved, rejected)', 400));
 
     const session = await reviewSessionsRepo.findById(req.params.sessionId);
     if (!session) return next(new AppError('Review session not found', 404));
@@ -309,6 +309,9 @@ const applyAdminSessionDecision = async (req, res, next) => {
 
     if (session.chapter_id) {
       targetType = 'chapter';
+      if (!CHAPTER_STATUS.includes(newStatus)) {
+        return next(new AppError(`Invalid chapter status '${newStatus}'`, 400));
+      }
       const chapter = await chaptersRepo.findById(session.chapter_id);
       if (!chapter) return next(new AppError('Chapter not found', 404));
 
@@ -336,6 +339,9 @@ const applyAdminSessionDecision = async (req, res, next) => {
       }
     } else if (session.series_id) {
       targetType = 'series';
+      if (!SERIES_STATUS.includes(newStatus)) {
+        return next(new AppError(`Invalid series status '${newStatus}'`, 400));
+      }
       const series = await seriesRepo.findById(session.series_id);
       if (!series) return next(new AppError('Series not found', 404));
 

@@ -11,7 +11,6 @@ const pageTasksRoutes = require("./mangakaPageTasks.routes");
 const { seriesTaskRouter } = require("./mangakaPageTasks.routes");
 const annotationsRoutes = require("./mangakaAnnotations.routes");
 const manuscriptsRoutes = require("./mangakaManuscripts.routes");
-const recoveryProposalsRoutes = require("./mangakaRecoveryProposals.routes");
 const notificationsRoutes = require("./mangakaNotifications.routes");
 const dashboardRoutes = require("./mangakaDashboard.routes");
 const exportRoutes = require("./mangakaExport.routes");
@@ -53,9 +52,6 @@ router.use(
 
 // Nested: /series/:seriesId/manuscripts
 router.use("/series/:seriesId/manuscripts", manuscriptsRoutes);
-
-// Nested: /series/:seriesId/recovery-proposals
-router.use("/series/:seriesId/recovery-proposals", recoveryProposalsRoutes);
 
 // Flat: /notifications (personal)
 router.use("/notifications", notificationsRoutes);
