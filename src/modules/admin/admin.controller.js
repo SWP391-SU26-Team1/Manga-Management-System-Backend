@@ -200,6 +200,174 @@ const updateAdminSession = async (req, res, next) => {
 const updateAdminSessionStatus = makeStatusUpdateHandler('review_session', 'session_id', 'sessionId');
 const deleteAdminSession = makeDeleteHandler('review_session', 'session_id', 'sessionId');
 
+// --- Admin Decision Workflow (Chu tich HDBT) ---
+const PUBLISH_RECOMMEND_THRESHOLD = 7;
+
+const finalizeAdminSession = async (req, res, next) => {
+  try {
+    const session = await reviewSessionsRepo.findById(req.params.sessionId);
+    if (!session) return next(new AppError('Review session not found', 404));
+    if (session.status !== 'in_progress') {
+      return next(new AppError(`Cannot finalize session with status '${session.status}'. Session must be in_progress.`, 400));
+    }
+
+    const { data: votes, error } = await supabase
+      .from('vote')
+      .select('vote_id, voter_id, score, decision, note, status, created_at')
+      .eq('session_id', req.params.sessionId);
+    if (error) throw error;
+
+    const validVotes = (votes || []).filter((v) => ['submitted', 'verified'].includes(v.status));
+    const totalVotes = validVotes.length;
+    const avgScore = totalVotes > 0
+      ? Math.round((validVotes.reduce((sum, v) => sum + (v.score || 0), 0) / totalVotes) * 10) / 10
+      : 0;
+
+    const decisionCount = validVotes.reduce((acc, v) => {
+      if (v.decision) acc[v.decision] = (acc[v.decision] ?? 0) + 1;
+      return acc;
+    }, {});
+    const dominantDecision = Object.entries(decisionCount).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'none';
+
+    let recommendation = 'reject';
+    let recommendationReason = '';
+    if (totalVotes === 0) {
+      recommendation = 'reject';
+      recommendationReason = 'No votes submitted.';
+    } else if (avgScore >= PUBLISH_RECOMMEND_THRESHOLD) {
+      recommendation = 'publish';
+      recommendationReason = `Average score (${avgScore}) meets publish threshold (>= ${PUBLISH_RECOMMEND_THRESHOLD}).`;
+    } else {
+      recommendation = 'reject';
+      recommendationReason = `Average score (${avgScore}) below publish threshold (< ${PUBLISH_RECOMMEND_THRESHOLD}).`;
+    }
+
+    const updatedSession = await reviewSessionsRepo.update(req.params.sessionId, {
+      status: 'completed',
+      ended_at: new Date().toISOString(),
+    });
+
+    return sendSuccess(res, 200, {
+      session: updatedSession,
+      summary: { total_votes: totalVotes, avg_score: avgScore, decision_count: decisionCount, dominant_decision: dominantDecision, recommendation, recommendation_reason: recommendationReason },
+      votes: validVotes,
+    }, 'Session finalized. Review the summary and apply your decision.');
+  } catch (e) { next(e); }
+};
+
+const getAdminSessionResult = async (req, res, next) => {
+  try {
+    const session = await reviewSessionsRepo.findById(req.params.sessionId);
+    if (!session) return next(new AppError('Review session not found', 404));
+
+    const { data: votes, error } = await supabase
+      .from('vote')
+      .select('vote_id, voter_id, score, decision, note, status, created_at')
+      .eq('session_id', req.params.sessionId);
+    if (error) throw error;
+
+    const validVotes = (votes || []).filter((v) => ['submitted', 'verified'].includes(v.status));
+    const totalVotes = validVotes.length;
+    const avgScore = totalVotes > 0
+      ? Math.round((validVotes.reduce((sum, v) => sum + (v.score || 0), 0) / totalVotes) * 10) / 10
+      : 0;
+
+    const decisionCount = validVotes.reduce((acc, v) => {
+      if (v.decision) acc[v.decision] = (acc[v.decision] ?? 0) + 1;
+      return acc;
+    }, {});
+    const dominantDecision = Object.entries(decisionCount).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'none';
+
+    let recommendation = avgScore >= PUBLISH_RECOMMEND_THRESHOLD ? 'publish' : 'reject';
+    let recommendationReason = avgScore >= PUBLISH_RECOMMEND_THRESHOLD
+      ? `Average score (${avgScore}) meets publish threshold (>= ${PUBLISH_RECOMMEND_THRESHOLD}).`
+      : `Average score (${avgScore}) below publish threshold (< ${PUBLISH_RECOMMEND_THRESHOLD}).`;
+    if (totalVotes === 0) { recommendation = 'reject'; recommendationReason = 'No votes submitted.'; }
+
+    return sendSuccess(res, 200, {
+      session,
+      summary: { total_votes: totalVotes, avg_score: avgScore, decision_count: decisionCount, dominant_decision: dominantDecision, recommendation, recommendation_reason: recommendationReason },
+      votes: validVotes,
+    }, 'Session result');
+  } catch (e) { next(e); }
+};
+
+const applyAdminSessionDecision = async (req, res, next) => {
+  try {
+    const { status: newStatus, note } = req.body;
+    if (!newStatus) return next(new AppError('status is required (e.g. published, approved, rejected)', 400));
+
+    const session = await reviewSessionsRepo.findById(req.params.sessionId);
+    if (!session) return next(new AppError('Review session not found', 404));
+    if (session.status !== 'completed') {
+      return next(new AppError(`Cannot apply decision on session with status '${session.status}'. Please finalize the session first.`, 400));
+    }
+
+    const { createNotifications } = require('../../utils/notification.helper');
+    let targetEntity = null;
+    let targetType = '';
+
+    if (session.chapter_id) {
+      targetType = 'chapter';
+      const chapter = await chaptersRepo.findById(session.chapter_id);
+      if (!chapter) return next(new AppError('Chapter not found', 404));
+
+      if (newStatus === 'published') {
+        const series = await seriesRepo.findById(chapter.series_id);
+        if (!series || series.status !== 'published') {
+          return next(new AppError('Cannot publish chapter: the parent series must be published first.', 400));
+        }
+      }
+
+      targetEntity = await chaptersRepo.update(session.chapter_id, {
+        status: newStatus,
+        updated_at: new Date().toISOString(),
+        ...(newStatus === 'published' ? { publish_date: new Date().toISOString() } : {}),
+      });
+
+      const { data: members } = await supabase.from('series_member').select('user_id').eq('series_id', chapter.series_id);
+      if (members?.length) {
+        await createNotifications(members.map((m) => ({
+          userId: m.user_id,
+          title: `Chapter ${newStatus}`,
+          content: note || `Chapter "${chapter.title || 'Ch.' + chapter.chapter_number}" has been ${newStatus}.`,
+          type: 'decision_result',
+        })));
+      }
+    } else if (session.series_id) {
+      targetType = 'series';
+      const series = await seriesRepo.findById(session.series_id);
+      if (!series) return next(new AppError('Series not found', 404));
+
+      targetEntity = await seriesRepo.update(session.series_id, {
+        status: newStatus,
+        updated_at: new Date().toISOString(),
+      });
+
+      const { data: members } = await supabase.from('series_member').select('user_id').eq('series_id', session.series_id);
+      if (members?.length) {
+        await createNotifications(members.map((m) => ({
+          userId: m.user_id,
+          title: `Series ${newStatus}`,
+          content: note || `Series "${series.title}" has been ${newStatus}.`,
+          type: 'decision_result',
+        })));
+      }
+    } else {
+      return next(new AppError('Session is not linked to any series or chapter', 400));
+    }
+
+    await reviewSessionsRepo.update(req.params.sessionId, { status: 'finished' });
+
+    return sendSuccess(res, 200, {
+      target_type: targetType,
+      target: targetEntity,
+      applied_status: newStatus,
+      session_status: 'finished',
+    }, `Decision applied: ${targetType} -> ${newStatus}`);
+  } catch (e) { next(e); }
+};
+
 // Votes
 const listAdminVotes = makeListHandler(
   'vote',
@@ -580,7 +748,7 @@ module.exports = {
   listAdminTasks, getAdminTaskById, updateAdminTask, updateAdminTaskStatus, deleteAdminTask,
   listAdminFeedbacks, getAdminFeedbackById, updateAdminFeedbackStatus, deleteAdminFeedback,
   listAdminAnnotations, getAdminAnnotationById, updateAdminAnnotationStatus, deleteAdminAnnotation,
-  listAdminSessions, getAdminSessionById, createAdminSession, updateAdminSession, updateAdminSessionStatus, deleteAdminSession,
+  listAdminSessions, getAdminSessionById, createAdminSession, updateAdminSession, updateAdminSessionStatus, deleteAdminSession, finalizeAdminSession, getAdminSessionResult, applyAdminSessionDecision,
   listAdminVotes, getAdminVoteById, updateAdminVote, updateAdminVoteStatus, deleteAdminVote,
   listAdminPeriods, getAdminPeriodById, createAdminPeriod, updateAdminPeriod, updateAdminPeriodStatus, deleteAdminPeriod,
   listAdminSeriesRankings, createAdminSeriesRanking, updateAdminSeriesRanking, deleteAdminSeriesRanking,

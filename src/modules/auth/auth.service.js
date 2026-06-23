@@ -21,14 +21,17 @@ const signToken = (user) =>
 
 // Kiểm tra trạng thái user - dùng chung cho cả Email và Google
 const checkUserStatus = (user) => {
-  if (user.status === 'inactive') {
-    throw new AppError('Account has been deactivated. Please contact support', 403);
-  }
-  if (user.status === 'suspended') {
-    throw new AppError('Account is temporarily suspended due to violation', 403);
-  }
-  if (user.status === 'banned') {
-    throw new AppError('Account has been permanently banned', 403);
+  if (user.status !== 'active') {
+    if (user.status === 'inactive') {
+      throw new AppError('Account has been deactivated. Please contact support', 403);
+    }
+    if (user.status === 'suspended') {
+      throw new AppError('Account is temporarily suspended due to violation', 403);
+    }
+    if (user.status === 'banned') {
+      throw new AppError('Account has been permanently banned', 403);
+    }
+    throw new AppError('Account is not active', 403);
   }
 };
 
