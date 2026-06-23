@@ -86,29 +86,6 @@ Unique constraints: `UNIQUE (series_id, user_id)`
 
 Indexes: `idx_series_member_series_id`, `idx_series_member_user_id`
 
-### recovery_proposal
-
-Primary key: `proposal_id`
-
-Columns:
-
-| Column               | Type         | Required | Default             | Notes                                    |
-| -------------------- | ------------ | -------- | ------------------- | ---------------------------------------- |
-| `proposal_id`        | UUID         | yes      | `gen_random_uuid()` | PK                                       |
-| `series_id`          | UUID         | yes      |                     | FK to `series.series_id`, cascade delete |
-| `created_by_user_id` | UUID         | yes      |                     | FK to `users.user_id`, set null          |
-| `title`              | VARCHAR(255) | yes      |                     |                                          |
-| `description`        | TEXT         | yes      |                     |                                          |
-| `status`             | VARCHAR(50)  | yes      | `pending`           | check constraint                         |
-| `created_at`         | TIMESTAMP    | no       | `CURRENT_TIMESTAMP` |                                          |
-| `updated_at`         | TIMESTAMP    | no       | `CURRENT_TIMESTAMP` | update manually in API                   |
-
-Status values: `pending`, `approved`, `rejected`
-
-Indexes: `idx_recovery_proposal_series_id`, `idx_recovery_proposal_created_by_user_id`
-
-Referenced by: none
-
 ### chapter
 
 Primary key: `chapter_id`
@@ -350,6 +327,7 @@ Columns:
 | `score`      | INT         | no       |                     | check: null or 1-10                               |
 | `note`       | TEXT        | no       |                     |                                                   |
 | `created_at` | TIMESTAMP   | no       | `CURRENT_TIMESTAMP` |                                                   |
+| `updated_at` | TIMESTAMP   | no       | `CURRENT_TIMESTAMP` | update manually in API                            |
 | `status`     | VARCHAR(50) | yes      | `submitted`         | added by migration                                |
 
 Status values: `submitted`, `verified`
@@ -546,7 +524,6 @@ const MANUSCRIPT_STATUS = [
   "deleted",
 ];
 const MANUSCRIPT_FILE_STATUS = ["uploaded", "validated", "deleted"];
-const RECOVERY_PROPOSAL_STATUS = ["pending", "approved", "rejected"];
 const RANKING_PERIOD_STATUS = [
   "pending",
   "calculating",
@@ -557,7 +534,7 @@ const RANKING_PERIOD_STATUS = [
 
 ## Supabase Relationship Notes
 
-Use table names exactly as defined: `users`, `notification`, `series`, `series_member`, `chapter`, `page`, `page_region`, `page_task`, `page_version`, `page_submission`, `page_task_feedback`, `annotation`, `review_session`, `vote`, `ranking_period`, `series_ranking`, `chapter_ranking`, `manuscript`, `manuscript_file`, `recovery_proposal`.
+Use table names exactly as defined: `users`, `notification`, `series`, `series_member`, `chapter`, `page`, `page_region`, `page_task`, `page_version`, `page_submission`, `page_task_feedback`, `annotation`, `review_session`, `vote`, `ranking_period`, `series_ranking`, `chapter_ranking`, `manuscript`, `manuscript_file`.
 
 Important foreign key constraint names for joined selects:
 

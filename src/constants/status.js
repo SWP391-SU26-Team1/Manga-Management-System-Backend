@@ -90,7 +90,6 @@ const MANUSCRIPT_STATUS = [
   "deleted",
 ];
 const MANUSCRIPT_FILE_STATUS = ["uploaded", "validated", "deleted"];
-const RECOVERY_PROPOSAL_STATUS = ["pending", "approved", "rejected"];
 
 const RANKING_PERIOD_STATUS = [
   "pending",
@@ -113,6 +112,5 @@ module.exports = {
   VOTE_STATUS,
   MANUSCRIPT_STATUS,
   MANUSCRIPT_FILE_STATUS,
-  RECOVERY_PROPOSAL_STATUS,
   RANKING_PERIOD_STATUS,
 };

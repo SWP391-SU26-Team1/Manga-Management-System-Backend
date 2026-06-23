@@ -31,13 +31,26 @@ const createVote = async (payload) => {
 const updateVote = async (voteId, payload) => {
   const vote = await votesRepo.findById(voteId);
   if (!vote) throw new AppError('Vote not found', 404);
-  return votesRepo.update(voteId, payload);
+
+  if (payload.score !== null && payload.score !== undefined) {
+    if (payload.score < 1 || payload.score > 10) {
+      throw new AppError('Score must be between 1 and 10', 400);
+    }
+  }
+
+  return votesRepo.update(voteId, {
+    ...payload,
+    updated_at: new Date().toISOString(),
+  });
 };
 
 const updateVoteStatus = async (voteId, status) => {
   const vote = await votesRepo.findById(voteId);
   if (!vote) throw new AppError('Vote not found', 404);
-  return votesRepo.update(voteId, { status });
+  return votesRepo.update(voteId, {
+    status,
+    updated_at: new Date().toISOString(),
+  });
 };
 
 const deleteVote = async (voteId) => {

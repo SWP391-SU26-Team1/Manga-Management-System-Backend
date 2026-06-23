@@ -340,61 +340,6 @@
  *     responses:
  *       201: { description: Task created }
  *
- * /api/mangaka/series/{seriesId}/recovery-proposals:
- *   get:
- *     tags: [Mangaka]
- *     summary: List recovery proposals for my series
- *     parameters:
- *       - in: path
- *         name: seriesId
- *         required: true
- *         schema: { type: string, format: uuid }
- *     responses:
- *       200: { description: Recovery proposals list }
- *   post:
- *     tags: [Mangaka]
- *     summary: Create a recovery proposal for a series
- *     parameters:
- *       - in: path
- *         name: seriesId
- *         required: true
- *         schema: { type: string, format: uuid }
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [title, description]
- *             properties:
- *               title: { type: string, example: "Recovery proposal for Dragon Blade" }
- *               description: { type: string, example: "I propose a holiday special, extra marketing, and guest artist support." }
- *     responses:
- *       201: { description: Recovery proposal created }
- *
- * /api/mangaka/series/{seriesId}/recovery-proposals/{proposalId}:
- *   get:
- *     tags: [Mangaka]
- *     summary: Get a specific recovery proposal
- *     parameters:
- *       - in: path
- *         name: seriesId
- *         required: true
- *         schema: { type: string, format: uuid }
- *       - in: path
- *         name: proposalId
- *         required: true
- *         schema: { type: string, format: uuid }
- *     responses:
- *       200: { description: Recovery proposal detail }
- *
- *               task_type: { type: string, example: "coloring" }
- *               assistant_id: { type: string, format: uuid }
- *               deadline: { type: string, format: date-time }
- *               description: { type: string }
- *     responses:
- *       201: { description: Task created }
- *
  * /api/mangaka/notifications:
  *   get:
  *     tags: [Mangaka]

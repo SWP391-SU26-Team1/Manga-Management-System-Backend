@@ -1,9 +1,13 @@
 ﻿const { z } = require('zod');
-const { REVIEW_SESSION_STATUS } = require('../../constants/status');
+const {
+  REVIEW_SESSION_STATUS,
+  CHAPTER_STATUS,
+  SERIES_STATUS,
+} = require('../../constants/status');
 
 // PostgreSQL accepts UUID-shaped values even when they do not encode an RFC version.
 const uuidParam = z.string().regex(
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
   { message: 'Invalid UUID' },
 );
 
@@ -31,6 +35,20 @@ const updateSessionStatusSchema = z.object({
   body: z.object({ status: z.enum(REVIEW_SESSION_STATUS) }),
 });
 
+const applyDecisionSchema = z.object({
+  params: z.object({ sessionId: uuidParam }),
+  body: z.object({
+    status: z.enum([...new Set([...CHAPTER_STATUS, ...SERIES_STATUS])]),
+    note: z.string().optional(),
+  }),
+});
+
 const sessionIdParamSchema = z.object({ params: z.object({ sessionId: uuidParam }) });
 
-module.exports = { createSessionSchema, updateSessionSchema, updateSessionStatusSchema, sessionIdParamSchema };
+module.exports = {
+  createSessionSchema,
+  updateSessionSchema,
+  updateSessionStatusSchema,
+  applyDecisionSchema,
+  sessionIdParamSchema,
+};

@@ -1,14 +1,17 @@
 const supabase = require('../config/supabase');
+const { emitNewNotification } = require('../realtime/notification.socket');
 
 const createNotification = async (userId, title, content, type = null) => {
-  const { error } = await supabase.from('notification').insert({
-    user_id: userId,
-    title,
-    content,
-    type,
-    is_read: false,
-  });
-  if (error) console.error('[Notification] Failed to create:', error.message);
+  const { data, error } = await supabase
+    .from('notification')
+    .insert({ user_id: userId, title, content, type, is_read: false })
+    .select()
+    .single();
+  if (error) {
+    console.error('[Notification] Failed to create:', error.message);
+    return;
+  }
+  emitNewNotification(userId, data);
 };
 
 const createNotifications = async (notifications) => {
@@ -19,8 +22,12 @@ const createNotifications = async (notifications) => {
     type: n.type || null,
     is_read: false,
   }));
-  const { error } = await supabase.from('notification').insert(rows);
-  if (error) console.error('[Notification] Bulk create failed:', error.message);
+  const { data, error } = await supabase.from('notification').insert(rows).select();
+  if (error) {
+    console.error('[Notification] Bulk create failed:', error.message);
+    return;
+  }
+  data.forEach((n) => emitNewNotification(n.user_id, n));
 };
 
 module.exports = { createNotification, createNotifications };
