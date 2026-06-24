@@ -21,9 +21,6 @@ const listUsers = async (req, res, next) => {
 
 const getUserById = async (req, res, next) => {
   try {
-    if (req.user.role !== 'admin' && req.user.user_id !== req.params.userId) {
-      return next(new AppError('Forbidden: access denied', 403));
-    }
     const data = await usersService.getUserById(req.params.userId);
     return sendSuccess(res, 200, data, 'Success');
   } catch (error) {
