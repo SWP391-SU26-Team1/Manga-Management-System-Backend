@@ -24,12 +24,16 @@ const { CHAPTER_STATUS, SERIES_STATUS } = require('../../constants/status');
 const listUsers = async (req, res, next) => {
   try {
     const { page, limit, offset } = parsePagination(req.query);
-    const { role, status, keyword } = req.query;
+    const { role, status, keyword, sort, order } = req.query;
     let query = supabase.from('users').select('user_id,username,email,role,status,created_at', { count: 'exact' });
     if (role) query = query.eq('role', role);
     if (status) query = query.eq('status', status);
     if (keyword) query = query.or(`username.ilike.%${keyword}%,email.ilike.%${keyword}%`);
-    query = query.order('created_at', { ascending: false }).range(offset, offset + limit - 1);
+
+    const sortField = sort || 'created_at';
+    const isAscending = order === 'asc';
+    query = query.order(sortField, { ascending: isAscending }).range(offset, offset + limit - 1);
+
     const { data, error, count } = await query;
     if (error) throw error;
     return res.status(200).json({ success: true, message: 'Success', data, pagination: buildPaginationMeta(page, limit, count) });
@@ -92,10 +96,43 @@ const deleteUser = async (req, res, next) => {
 const makeListHandler = (table, select = '*') => async (req, res, next) => {
   try {
     const { page, limit, offset } = parsePagination(req.query);
-    const { status } = req.query;
+    const { status, sort, order, keyword, genre, series_id, chapter_id, assistant_id, session_id, voter_id } = req.query;
+
     let query = supabase.from(table).select(select, { count: 'exact' });
-    if (status) query = query.eq('status', status);
-    query = query.order('created_at', { ascending: false }).range(offset, offset + limit - 1);
+
+    if (status) {
+      query = query.eq('status', status);
+    }
+
+    if (series_id) query = query.eq('series_id', series_id);
+    if (chapter_id) query = query.eq('chapter_id', chapter_id);
+    if (assistant_id) query = query.eq('assistant_id', assistant_id);
+    if (session_id) query = query.eq('session_id', session_id);
+    if (voter_id) query = query.eq('voter_id', voter_id);
+
+    if (genre && table === 'series') {
+      query = query.ilike('genre', `%${genre}%`);
+    }
+
+    if (keyword) {
+      const kw = keyword.trim();
+      if (table === 'series') {
+        query = query.or(`title.ilike.%${kw}%,description.ilike.%${kw}%`);
+      } else if (table === 'chapter') {
+        query = query.ilike('title', `%${kw}%`);
+      } else if (table === 'page_task') {
+        query = query.or(`task_type.ilike.%${kw}%,content.ilike.%${kw}%`);
+      } else if (table === 'review_session') {
+        query = query.or(`name.ilike.%${kw}%,description.ilike.%${kw}%`);
+      } else if (table === 'vote') {
+        query = query.or(`decision.ilike.%${kw}%,note.ilike.%${kw}%`);
+      }
+    }
+
+    const sortField = sort || 'created_at';
+    const isAscending = order === 'asc';
+    query = query.order(sortField, { ascending: isAscending }).range(offset, offset + limit - 1);
+
     const { data, error, count } = await query;
     if (error) throw error;
     return res.status(200).json({ success: true, message: 'Success', data, pagination: buildPaginationMeta(page, limit, count) });
@@ -315,10 +352,27 @@ const applyAdminSessionDecision = async (req, res, next) => {
       const chapter = await chaptersRepo.findById(session.chapter_id);
       if (!chapter) return next(new AppError('Chapter not found', 404));
 
+      const series = await seriesRepo.findById(chapter.series_id);
+      if (!series) return next(new AppError('Parent series not found', 404));
+
+      const seriesTitle = series.title;
+      let seriesStatusUpdated = false;
+
       if (newStatus === 'published') {
-        const series = await seriesRepo.findById(chapter.series_id);
-        if (!series || series.status !== 'published') {
-          return next(new AppError('Cannot publish chapter: the parent series must be published first.', 400));
+        if (series.status !== 'published') {
+          await seriesRepo.update(chapter.series_id, {
+            status: 'published',
+            updated_at: new Date().toISOString(),
+          });
+          seriesStatusUpdated = true;
+        }
+      } else if (newStatus === 'approved') {
+        if (['draft', 'pending_review'].includes(series.status)) {
+          await seriesRepo.update(chapter.series_id, {
+            status: 'approved',
+            updated_at: new Date().toISOString(),
+          });
+          seriesStatusUpdated = true;
         }
       }
 
@@ -328,15 +382,72 @@ const applyAdminSessionDecision = async (req, res, next) => {
         ...(newStatus === 'published' ? { publish_date: new Date().toISOString() } : {}),
       });
 
-      const { data: members } = await supabase.from('series_member').select('user_id').eq('series_id', chapter.series_id);
-      if (members?.length) {
-        await createNotifications(members.map((m) => ({
-          userId: m.user_id,
-          title: `Chapter ${newStatus}`,
-          content: note || `Chapter "${chapter.title || 'Ch.' + chapter.chapter_number}" has been ${newStatus}.`,
-          type: 'decision_result',
-        })));
-      }
+      // Background notification job
+      (async () => {
+        try {
+          const { data: members } = await supabase.from('series_member').select('user_id').eq('series_id', chapter.series_id);
+          if (members?.length) {
+            const notificationsList = [];
+            const userIds = members.map(m => m.user_id);
+            const chapterLabel = chapter.title || `Ch.${chapter.chapter_number}`;
+
+            // 1. Chapter decision notification
+            let chapTitle = '';
+            let chapContent = '';
+
+            if (newStatus === 'published') {
+              chapTitle = 'Chúc mừng! Chapter đã được xuất bản';
+              chapContent = `Chúc mừng! Chapter "${chapterLabel}" của truyện "${seriesTitle}" đã được xuất bản công khai.`;
+            } else if (newStatus === 'approved') {
+              chapTitle = 'Chapter đã được phê duyệt';
+              chapContent = `Chapter "${chapterLabel}" của truyện "${seriesTitle}" đã được phê duyệt thành công.`;
+            } else if (newStatus === 'rejected') {
+              chapTitle = 'Cảnh báo: Từ chối xuất bản chapter';
+              chapContent = `Cảnh báo: Chapter "${chapterLabel}" của truyện "${seriesTitle}" không được phê duyệt xuất bản. Lý do: ${note || 'Không có lý do cụ thể.'}`;
+            } else {
+              chapTitle = `Chapter ${newStatus}`;
+              chapContent = note || `Chapter "${chapterLabel}" of series "${seriesTitle}" has been ${newStatus}.`;
+            }
+
+            userIds.forEach(userId => {
+              notificationsList.push({
+                userId,
+                title: chapTitle,
+                content: chapContent,
+                type: 'decision_result'
+              });
+            });
+
+            // 2. Series automatic decision notification
+            if (seriesStatusUpdated) {
+              let serTitle = '';
+              let serContent = '';
+              if (newStatus === 'published') {
+                serTitle = 'Chúc mừng! Truyện đã được xuất bản';
+                serContent = `Chúc mừng! Truyện "${seriesTitle}" của bạn đã được tự động xuất bản kèm Chapter "${chapterLabel}".`;
+              } else if (newStatus === 'approved') {
+                serTitle = 'Truyện đã được phê duyệt';
+                serContent = `Truyện "${seriesTitle}" của bạn đã được tự động phê duyệt kèm Chapter "${chapterLabel}".`;
+              }
+
+              if (serTitle) {
+                userIds.forEach(userId => {
+                  notificationsList.push({
+                    userId,
+                    title: serTitle,
+                    content: serContent,
+                    type: 'decision_result'
+                  });
+                });
+              }
+            }
+
+            await createNotifications(notificationsList);
+          }
+        } catch (err) {
+          console.error('[Background Notification Error]:', err);
+        }
+      })();
     } else if (session.series_id) {
       targetType = 'series';
       if (!SERIES_STATUS.includes(newStatus)) {
@@ -350,15 +461,48 @@ const applyAdminSessionDecision = async (req, res, next) => {
         updated_at: new Date().toISOString(),
       });
 
-      const { data: members } = await supabase.from('series_member').select('user_id').eq('series_id', session.series_id);
-      if (members?.length) {
-        await createNotifications(members.map((m) => ({
-          userId: m.user_id,
-          title: `Series ${newStatus}`,
-          content: note || `Series "${series.title}" has been ${newStatus}.`,
-          type: 'decision_result',
-        })));
-      }
+      const seriesTitle = series.title;
+
+      // Background notification job
+      (async () => {
+        try {
+          const { data: members } = await supabase.from('series_member').select('user_id').eq('series_id', session.series_id);
+          if (members?.length) {
+            const notificationsList = [];
+            const userIds = members.map(m => m.user_id);
+
+            let serTitle = '';
+            let serContent = '';
+
+            if (newStatus === 'published') {
+              serTitle = 'Chúc mừng! Truyện đã được xuất bản';
+              serContent = `Chúc mừng! Truyện "${seriesTitle}" của bạn đã được xuất bản công khai.`;
+            } else if (newStatus === 'approved') {
+              serTitle = 'Truyện đã được phê duyệt';
+              serContent = `Truyện "${seriesTitle}" của bạn đã được phê duyệt thành công.`;
+            } else if (newStatus === 'rejected') {
+              serTitle = 'Cảnh báo: Từ chối xuất bản truyện';
+              serContent = `Cảnh báo: Truyện "${seriesTitle}" của bạn không được phê duyệt xuất bản. Lý do: ${note || 'Không có lý do cụ thể.'}`;
+            } else {
+              serTitle = `Series ${newStatus}`;
+              serContent = note || `Series "${seriesTitle}" has been ${newStatus}.`;
+            }
+
+            userIds.forEach(userId => {
+              notificationsList.push({
+                userId,
+                title: serTitle,
+                content: serContent,
+                type: 'decision_result'
+              });
+            });
+
+            await createNotifications(notificationsList);
+          }
+        } catch (err) {
+          console.error('[Background Notification Error]:', err);
+        }
+      })();
     } else {
       return next(new AppError('Session is not linked to any series or chapter', 400));
     }
