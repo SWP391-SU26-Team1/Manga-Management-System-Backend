@@ -7,11 +7,52 @@ const AppError = require('../../utils/appError');
 const TASK_SELECT = `*, page:page_id(page_id,page_number,chapter:chapter_id(chapter_id,title,series:series_id(series_id,title))), users!fk_page_task_assistant(user_id,username,email), users!fk_page_task_assigned_by(user_id,username,email)`;
 
 const listReviewTasks = async (filters) => {
+  // Get page IDs if filtering by chapter or series (Supabase doesn't support nested filter directly)
+  let pageIds = null;
+  
+  if (filters.chapterId) {
+    const { data: pages, error: pageError } = await supabase
+      .from('page')
+      .select('page_id', { count: 'exact' })
+      .eq('chapter_id', filters.chapterId);
+    if (pageError) throw pageError;
+    pageIds = pages?.map(p => p.page_id) || [];
+  }
+  
+  if (filters.seriesId && !filters.chapterId) {
+    // Get chapters from series, then pages from those chapters
+    const { data: chapters } = await supabase
+      .from('chapter')
+      .select('chapter_id')
+      .eq('series_id', filters.seriesId);
+    const chapterIds = chapters?.map(c => c.chapter_id) || [];
+    
+    if (chapterIds.length === 0) {
+      return { data: [], total: 0 };
+    }
+    
+    const { data: pages, error: pageError } = await supabase
+      .from('page')
+      .select('page_id')
+      .in('chapter_id', chapterIds);
+    if (pageError) throw pageError;
+    pageIds = pages?.map(p => p.page_id) || [];
+  }
+  
+  // Query page_tasks
   let query = supabase.from('page_task').select(TASK_SELECT, { count: 'exact' });
+  
   if (filters.status) query = query.eq('status', filters.status);
   if (filters.assistantId) query = query.eq('assistant_id', filters.assistantId);
-  if (filters.chapterId) query = query.eq('page.chapter_id', filters.chapterId);
-  if (filters.seriesId) query = query.eq('page.chapter.series_id', filters.seriesId);
+  
+  // Filter by pages if chapter/series filter was applied
+  if (pageIds !== null) {
+    if (pageIds.length === 0) {
+      return { data: [], total: 0 };
+    }
+    query = query.in('page_id', pageIds);
+  }
+  
   query = query.order('created_at', { ascending: false }).range(filters.offset, filters.offset + filters.limit - 1);
   const { data, error, count } = await query;
   if (error) throw error;

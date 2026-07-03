@@ -563,6 +563,39 @@ const listTaskFeedbacks = async (req, res, next) => {
   }
 };
 
+const getFeedbacks = async (req, res, next) => {
+  try {
+    const { page, limit, offset } = parsePagination(req.query);
+    const { page_id, submission_id } = req.query;
+    
+    // Base query with relationships
+    let query = supabase
+      .from('page_task_feedback')
+      .select('*,submission:submission_id(submission_id,submission_status,page_id)', { count: 'exact' });
+    
+    if (page_id) {
+      query = query.eq('submission.page_id', page_id);
+    }
+    
+    if (submission_id) {
+      query = query.eq('submission_id', submission_id);
+    }
+    
+    query = query.order('created_at', { ascending: false }).range(offset, offset + limit - 1);
+    const { data, error, count } = await query;
+    if (error) throw error;
+    
+    return res.status(200).json({
+      success: true,
+      message: 'Success',
+      data,
+      pagination: buildPaginationMeta(page, limit, count),
+    });
+  } catch (e) {
+    next(e);
+  }
+};
+
 const createFeedback = async (req, res, next) => {
   try {
     const data = await pageTaskFeedbacksRepo.create({
@@ -970,6 +1003,7 @@ module.exports = {
   updateAnnotationStatus,
   deleteAnnotation,
   listTaskFeedbacks,
+  getFeedbacks,
   createFeedback,
   updateFeedback,
   updateFeedbackStatus,

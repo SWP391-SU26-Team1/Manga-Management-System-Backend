@@ -121,6 +121,7 @@ router.patch("/annotations/:annotationId/status", ctrl.updateAnnotationStatus);
 router.delete("/annotations/:annotationId", ctrl.deleteAnnotation);
 
 // Feedbacks
+router.get("/feedbacks", ctrl.getFeedbacks);
 router.get("/page-tasks/:taskId/feedbacks", ctrl.listTaskFeedbacks);
 router.post("/page-tasks/:taskId/feedbacks", ctrl.createFeedback);
 router.patch("/page-task-feedbacks/:feedbackId", ctrl.updateFeedback);

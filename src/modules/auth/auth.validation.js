@@ -21,7 +21,11 @@ const loginSchema = z.object({
 
 const loginGoogleSchema = z.object({
   body: z.object({
-    idToken: z.string().min(1),
+    idToken: z.string().min(1).optional(),
+    code: z.string().min(1).optional(),
+    redirectUri: z.string().url().optional(),
+  }).refine((data) => data.idToken || data.code, {
+    message: 'Either idToken or code is required',
   }),
 });
 

@@ -20,3 +20,9 @@ coverage/
 
 # Claude Code
 .claude/
+
+api_list.txt
+api_list_full.txt
+api_list_final.txt
+api_list_categorized.md
+api_routes.json
