@@ -65,6 +65,7 @@ const options = {
       { name: 'Board', description: 'Editorial Board APIs' },
       { name: 'Admin', description: 'Admin management APIs' },
       { name: 'Internal', description: 'Internal notification service' },
+      { name: 'AI Assistant', description: 'AI-powered manga analysis (Panel Detection, Smart Coloring)' },
     ],
   },
   apis: ['./src/modules/**/*.routes.js', './src/docs/*.js'],

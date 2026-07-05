@@ -1,5 +1,6 @@
 const supabase = require('../../config/supabase');
 const pageRegionsRepo = require('../pageRegions/pageRegions.repository');
+const aiRepo = require('../ai/ai.repository');
 const AppError = require('../../utils/appError');
 
 const listRegions = async (pageId) => {
@@ -15,13 +16,32 @@ const getRegionById = async (regionId, pageId) => {
 };
 
 const createRegion = async (pageId, payload) => {
-  return pageRegionsRepo.create({ ...payload, page_id: pageId });
+  const { suggestion_id, ...rest } = payload;
+  const region = await pageRegionsRepo.create({ ...rest, page_id: pageId });
+  if (suggestion_id) {
+    try {
+      await aiRepo.markApplied(suggestion_id);
+    } catch (err) {
+      console.error('⚠️ Failed to mark AI suggestion as applied:', err.message);
+    }
+  }
+  return region;
 };
 
-const bulkCreateRegions = async (pageId, regions) => {
-  const rows = regions.map((r) => ({ ...r, page_id: pageId }));
+const bulkCreateRegions = async (pageId, regions, suggestionId) => {
+  const rows = regions.map((r) => {
+    const { suggestion_id, ...rest } = r;
+    return { ...rest, page_id: pageId };
+  });
   const { data, error } = await supabase.from('page_region').insert(rows).select();
   if (error) throw error;
+  if (suggestionId) {
+    try {
+      await aiRepo.markApplied(suggestionId);
+    } catch (err) {
+      console.error('⚠️ Failed to mark AI suggestion as applied:', err.message);
+    }
+  }
   return data;
 };
 

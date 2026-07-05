@@ -29,6 +29,7 @@ const seriesRankingsRoutes = require('./modules/seriesRankings/seriesRankings.ro
 const chapterRankingsRoutes = require('./modules/chapterRankings/chapterRankings.routes');
 const notificationsRoutes = require('./modules/notifications/notifications.routes');
 const dashboardRoutes = require('./modules/dashboard/dashboard.routes');
+const aiRoutes = require('./modules/ai/ai.routes');
 
 // Role-specific routes
 const mangakaRoutes = require('./modules/mangaka/mangaka.routes');
@@ -92,6 +93,7 @@ app.use('/api/pages', pagesRoutes);
 app.use('/api/pages/:pageId/regions', pageRegionsRoutes);
 app.use('/api/pages/:pageId/tasks', pageTasksRoutes);
 app.use('/api/pages/:pageId/annotations', annotationsRoutes);
+app.use('/api/pages/:pageId/ai', aiRoutes);
 
 // Page regions standalone
 app.use('/api/page-regions', pageRegionsRoutes);
@@ -100,6 +102,7 @@ app.use('/api/page-regions', pageRegionsRoutes);
 app.use('/api/page-tasks', pageTasksRoutes);
 app.use('/api/page-tasks/:taskId/feedbacks', pageTaskFeedbacksRoutes);
 app.use('/api/page-tasks/:taskId/annotations', annotationsRoutes);
+app.use('/api/page-tasks/:taskId/ai', aiRoutes);
 
 // Assistants tasks
 app.use('/api/assistants/:assistantId/tasks', pageTasksRoutes);
@@ -142,6 +145,9 @@ app.use('/api/notifications', notificationsRoutes);
 
 // Dashboard
 app.use('/api/dashboard', dashboardRoutes);
+
+// AI standalone (polling & reject)
+app.use('/api/ai', aiRoutes);
 
 // Role-specific routes
 app.use('/api/mangaka', mangakaRoutes);

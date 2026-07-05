@@ -63,6 +63,7 @@ router.post(
       body: z.object({
         file_url: z.string().url(),
         submission_notes: z.string().optional(),
+        suggestion_id: uuid.optional(),
       }),
     }),
   ),

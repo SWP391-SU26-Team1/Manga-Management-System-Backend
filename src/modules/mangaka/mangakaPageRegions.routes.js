@@ -13,10 +13,17 @@ const regionBodySchema = z.object({
   region_type: z.string().min(1).max(50).optional(),
   coordinates: z.any().optional(),
   label: z.string().max(255).optional(),
+  suggestion_id: uuid.optional(),
 });
 
 const createSchema = z.object({ params: pageP, body: regionBodySchema });
-const bulkSchema = z.object({ params: pageP, body: z.object({ regions: z.array(regionBodySchema).min(1) }) });
+const bulkSchema = z.object({
+  params: pageP,
+  body: z.object({
+    regions: z.array(regionBodySchema).min(1),
+    suggestion_id: uuid.optional(),
+  }),
+});
 const updateSchema = z.object({ params: regionP, body: regionBodySchema });
 
 router.use(requireSeriesMembership);
