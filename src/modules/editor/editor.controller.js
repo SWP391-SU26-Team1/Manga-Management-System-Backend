@@ -32,14 +32,12 @@ const listSeries = async (req, res, next) => {
       .range(offset, offset + limit - 1);
     const { data, error, count } = await query;
     if (error) throw error;
-    return res
-      .status(200)
-      .json({
-        success: true,
-        message: "Success",
-        data,
-        pagination: buildPaginationMeta(page, limit, count),
-      });
+    return res.status(200).json({
+      success: true,
+      message: "Success",
+      data,
+      pagination: buildPaginationMeta(page, limit, count),
+    });
   } catch (e) {
     next(e);
   }
@@ -238,14 +236,12 @@ const listReviewTasks = async (req, res, next) => {
       offset,
       limit,
     });
-    return res
-      .status(200)
-      .json({
-        success: true,
-        message: "Success",
-        data,
-        pagination: buildPaginationMeta(page, limit, total),
-      });
+    return res.status(200).json({
+      success: true,
+      message: "Success",
+      data,
+      pagination: buildPaginationMeta(page, limit, total),
+    });
   } catch (e) {
     next(e);
   }
@@ -359,14 +355,12 @@ const listReviewManuscripts = async (req, res, next) => {
       offset,
       limit,
     });
-    return res
-      .status(200)
-      .json({
-        success: true,
-        message: "Success",
-        data,
-        pagination: buildPaginationMeta(page, limit, total),
-      });
+    return res.status(200).json({
+      success: true,
+      message: "Success",
+      data,
+      pagination: buildPaginationMeta(page, limit, total),
+    });
   } catch (e) {
     next(e);
   }
@@ -567,27 +561,32 @@ const getFeedbacks = async (req, res, next) => {
   try {
     const { page, limit, offset } = parsePagination(req.query);
     const { page_id, submission_id } = req.query;
-    
+
     // Base query with relationships
     let query = supabase
-      .from('page_task_feedback')
-      .select('*,submission:submission_id(submission_id,submission_status,page_id)', { count: 'exact' });
-    
+      .from("page_task_feedback")
+      .select(
+        "*,submission:submission_id(submission_id,submission_status,page_id)",
+        { count: "exact" },
+      );
+
     if (page_id) {
-      query = query.eq('submission.page_id', page_id);
+      query = query.eq("submission.page_id", page_id);
     }
-    
+
     if (submission_id) {
-      query = query.eq('submission_id', submission_id);
+      query = query.eq("submission_id", submission_id);
     }
-    
-    query = query.order('created_at', { ascending: false }).range(offset, offset + limit - 1);
+
+    query = query
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
     const { data, error, count } = await query;
     if (error) throw error;
-    
+
     return res.status(200).json({
       success: true,
-      message: 'Success',
+      message: "Success",
       data,
       pagination: buildPaginationMeta(page, limit, count),
     });
@@ -652,14 +651,12 @@ const listReviewSessions = async (req, res, next) => {
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
     if (error) throw error;
-    return res
-      .status(200)
-      .json({
-        success: true,
-        message: "Success",
-        data,
-        pagination: buildPaginationMeta(page, limit, count),
-      });
+    return res.status(200).json({
+      success: true,
+      message: "Success",
+      data,
+      pagination: buildPaginationMeta(page, limit, count),
+    });
   } catch (e) {
     next(e);
   }
@@ -895,14 +892,12 @@ const listNotifications = async (req, res, next) => {
       .range(offset, offset + limit - 1);
     const { data, error, count } = await query;
     if (error) throw error;
-    return res
-      .status(200)
-      .json({
-        success: true,
-        message: "Success",
-        data,
-        pagination: buildPaginationMeta(page, limit, count),
-      });
+    return res.status(200).json({
+      success: true,
+      message: "Success",
+      data,
+      pagination: buildPaginationMeta(page, limit, count),
+    });
   } catch (e) {
     next(e);
   }
@@ -925,11 +920,12 @@ const getUnreadNotifications = async (req, res, next) => {
 
 const markNotificationRead = async (req, res, next) => {
   try {
-    await supabase
+    const { data, error } = await supabase
       .from("notification")
       .update({ is_read: true })
       .eq("notification_id", req.params.notificationId)
       .eq("user_id", req.user.user_id);
+    if (error) throw error;
     return sendSuccess(res, 200, null, "Marked as read");
   } catch (e) {
     next(e);
@@ -938,11 +934,12 @@ const markNotificationRead = async (req, res, next) => {
 
 const markAllRead = async (req, res, next) => {
   try {
-    await supabase
+    const { data, error } = await supabase
       .from("notification")
       .update({ is_read: true })
       .eq("user_id", req.user.user_id)
       .eq("is_read", false);
+    if (error) throw error;
     return sendSuccess(res, 200, null, "All marked as read");
   } catch (e) {
     next(e);
@@ -951,11 +948,12 @@ const markAllRead = async (req, res, next) => {
 
 const deleteNotification = async (req, res, next) => {
   try {
-    await supabase
+    const { data, error } = await supabase
       .from("notification")
       .delete()
       .eq("notification_id", req.params.notificationId)
       .eq("user_id", req.user.user_id);
+    if (error) throw error;
     return sendSuccess(res, 200, null, "Deleted");
   } catch (e) {
     next(e);
