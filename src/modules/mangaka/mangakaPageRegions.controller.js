@@ -24,7 +24,7 @@ const createRegion = async (req, res, next) => {
 
 const bulkCreateRegions = async (req, res, next) => {
   try {
-    const data = await service.bulkCreateRegions(req.params.pageId, req.body.regions);
+    const data = await service.bulkCreateRegions(req.params.pageId, req.body.regions, req.body.suggestion_id);
     return sendSuccess(res, 201, data, 'Regions created');
   } catch (e) { next(e); }
 };

@@ -1,4 +1,4 @@
-﻿const { z } = require('zod');
+const { z } = require('zod');
 const uuidParam = z.string().uuid({ message: 'Invalid UUID' });
 
 const createRegionSchema = z.object({
@@ -8,6 +8,7 @@ const createRegionSchema = z.object({
     y: z.number().int(),
     width: z.number().int().positive(),
     height: z.number().int().positive(),
+    suggestion_id: uuidParam.optional(),
   }),
 });
 

@@ -98,6 +98,15 @@ const RANKING_PERIOD_STATUS = [
   "archived",
 ];
 
+const PAGE_AI_SUGGESTION_STATUS = [
+  "processing",
+  "completed",
+  "failed",
+  "cancelled",
+  "applied",
+  "rejected",
+];
+
 module.exports = {
   USER_STATUS,
   USER_ROLES,
@@ -113,4 +122,6 @@ module.exports = {
   MANUSCRIPT_STATUS,
   MANUSCRIPT_FILE_STATUS,
   RANKING_PERIOD_STATUS,
+  PAGE_AI_SUGGESTION_STATUS,
 };
+

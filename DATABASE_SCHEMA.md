@@ -442,6 +442,33 @@ Status values: `uploaded`, `validated`, `deleted`
 
 Indexes: `idx_manuscript_file_manuscript_id`
 
+### page_ai_suggestion
+
+Primary key: `suggestion_id`
+
+Columns:
+
+| Column | Type | Required | Default | Notes |
+| --- | --- | --- | --- | --- |
+| `suggestion_id` | UUID | yes | `gen_random_uuid()` | PK |
+| `page_id` | UUID | yes | | FK to `page.page_id`, cascade delete |
+| `region_id` | UUID | no | | FK to `page_region.region_id`, set null |
+| `task_id` | UUID | no | | FK to `page_task.task_id`, set null |
+| `requested_by_id` | UUID | yes | | FK to `users.user_id`, cascade delete |
+| `attempt_number` | INTEGER | yes | `1` | Count number of AI runs for this task |
+| `ai_model` | VARCHAR(100) | no | | |
+| `prompt` | TEXT | no | | |
+| `reference_image_url` | TEXT | no | | |
+| `result_data` | JSONB | no | | |
+| `status` | VARCHAR(50) | yes | `processing` | check constraint |
+| `processing_time_ms`| INTEGER | no | | |
+| `created_at` | TIMESTAMPTZ  | no | `now()` | |
+| `updated_at` | TIMESTAMPTZ  | no | `now()` | update trigger |
+
+Status values: `processing`, `completed`, `failed`, `cancelled`, `applied`, `rejected`
+
+Indexes: `idx_ai_suggestion_page_id`, `idx_ai_suggestion_region_id`, `idx_ai_suggestion_task_id`, `idx_ai_suggestion_status`, `idx_ai_suggestion_requested_by`, `idx_ai_suggestion_created_at`
+
 ## Status Constants
 
 When implementing validation, mirror these in `src/constants/status.js`.
@@ -530,11 +557,19 @@ const RANKING_PERIOD_STATUS = [
   "completed",
   "archived",
 ];
+const PAGE_AI_SUGGESTION_STATUS = [
+  "processing",
+  "completed",
+  "failed",
+  "cancelled",
+  "applied",
+  "rejected",
+];
 ```
 
 ## Supabase Relationship Notes
 
-Use table names exactly as defined: `users`, `notification`, `series`, `series_member`, `chapter`, `page`, `page_region`, `page_task`, `page_version`, `page_submission`, `page_task_feedback`, `annotation`, `review_session`, `vote`, `ranking_period`, `series_ranking`, `chapter_ranking`, `manuscript`, `manuscript_file`.
+Use table names exactly as defined: `users`, `notification`, `series`, `series_member`, `chapter`, `page`, `page_region`, `page_task`, `page_version`, `page_submission`, `page_task_feedback`, `annotation`, `review_session`, `vote`, `ranking_period`, `series_ranking`, `chapter_ranking`, `manuscript`, `manuscript_file`, `page_ai_suggestion`.
 
 Important foreign key constraint names for joined selects:
 
@@ -575,6 +610,10 @@ Important foreign key constraint names for joined selects:
 | `manuscript`         | `series_id`          | `fk_manuscript_series`          | `series.series_id`              |
 | `manuscript`         | `chapter_id`         | `fk_manuscript_chapter`         | `chapter.chapter_id`            |
 | `manuscript_file`    | `manuscript_id`      | `fk_manuscript_file_manuscript` | `manuscript.manuscript_id`      |
+| `page_ai_suggestion` | `page_id`            | `fk_ai_suggestion_page`         | `page.page_id`                  |
+| `page_ai_suggestion` | `region_id`          | `fk_ai_suggestion_region`       | `page_region.region_id`         |
+| `page_ai_suggestion` | `task_id`            | `fk_ai_suggestion_task`         | `page_task.task_id`             |
+| `page_ai_suggestion` | `requested_by_id`    | `fk_ai_suggestion_user`         | `users.user_id`                 |
 
 When a table has multiple FKs to `users`, join with constraint names to avoid ambiguity:
 

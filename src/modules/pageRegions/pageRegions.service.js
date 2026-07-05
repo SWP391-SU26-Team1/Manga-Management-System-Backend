@@ -1,5 +1,6 @@
 const regionsRepo = require('./pageRegions.repository');
 const pagesRepo = require('../pages/pages.repository');
+const aiRepo = require('../ai/ai.repository');
 const AppError = require('../../utils/appError');
 
 const listRegions = async () => regionsRepo.findAll();
@@ -19,7 +20,16 @@ const getRegionsByPage = async (pageId) => {
 const createRegion = async (payload) => {
   const pageExists = await pagesRepo.existsById(payload.page_id);
   if (!pageExists) throw new AppError('Page not found', 404);
-  return regionsRepo.create(payload);
+  const { suggestion_id, ...regionData } = payload;
+  const region = await regionsRepo.create(regionData);
+  if (suggestion_id) {
+    try {
+      await aiRepo.markApplied(suggestion_id);
+    } catch (err) {
+      console.error('⚠️ Failed to mark AI suggestion as applied:', err.message);
+    }
+  }
+  return region;
 };
 
 const updateRegion = async (regionId, payload) => {
