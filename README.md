@@ -62,6 +62,15 @@ CLOUDINARY_CLOUD_NAME=<cloud-name>
 CLOUDINARY_API_KEY=<api-key>
 CLOUDINARY_API_SECRET=<api-secret>
 
+# SMTP / real OTP email delivery
+# Ví dụ dùng Gmail: EMAIL_HOST=smtp.gmail.com, EMAIL_PORT=587, EMAIL_SECURE=false
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_SECURE=false
+EMAIL_USER=<your-gmail-address>
+EMAIL_PASS=<your-app-password>
+EMAIL_FROM=<your-gmail-address>
+
 # Internal service secret — tự đặt chuỗi random bất kỳ
 INTERNAL_SERVICE_SECRET=<random-secret>
 ```

@@ -13,6 +13,53 @@ const googleClient = GOOGLE_CLIENT_ID
   ? new OAuth2Client(GOOGLE_CLIENT_ID)
   : null;
 
+const passwordResetOtpStore = new Map();
+
+const generatePasswordOtp = () =>
+  String(Math.floor(100000 + Math.random() * 900000));
+
+const normalizeEmail = (email) => email.trim().toLowerCase();
+
+const sendOtpEmail = async (email, otp) => {
+  const smtpHost = process.env.EMAIL_HOST || "smtp.gmail.com";
+  const smtpPort = Number(process.env.EMAIL_PORT || 587);
+  const smtpSecure =
+    process.env.EMAIL_SECURE === "true" || process.env.EMAIL_SECURE === "1";
+  const smtpUser = process.env.EMAIL_USER;
+  const smtpPass = process.env.EMAIL_PASS;
+
+  if (!smtpUser || !smtpPass) {
+    if (process.env.NODE_ENV !== "test") {
+      console.info(`[auth] SMTP credentials missing; OTP for ${email}: ${otp}`);
+    }
+    return;
+  }
+
+  let nodemailer;
+  try {
+    nodemailer = require("nodemailer");
+  } catch (error) {
+    console.warn(
+      "nodemailer is not installed; skipping password reset email delivery",
+    );
+    return;
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpSecure,
+    auth: { user: smtpUser, pass: smtpPass },
+  });
+
+  await transporter.sendMail({
+    from: process.env.EMAIL_FROM || smtpUser,
+    to: email,
+    subject: "Manga Management password reset OTP",
+    text: `Your password reset OTP is ${otp}. It will expire in 10 minutes.`,
+  });
+};
+
 const verifyGoogleIdToken = async (idToken) => {
   if (!GOOGLE_CLIENT_ID)
     throw new AppError("Google login is not configured on the server", 500);
@@ -182,6 +229,75 @@ const getMe = async (userId) => {
   return user;
 };
 
+const sendPasswordResetOtp = async (email) => {
+  const normalizedEmail = normalizeEmail(email);
+  const user = await usersRepo.findByEmail(normalizedEmail);
+  if (!user) {
+    throw new AppError(
+      "If an account exists for this email, an OTP has been sent",
+      200,
+    );
+  }
+
+  checkUserStatus(user);
+
+  const otp = generatePasswordOtp();
+  passwordResetOtpStore.set(normalizedEmail, {
+    otp,
+    expiresAt: Date.now() + 10 * 60 * 1000,
+    verified: false,
+  });
+
+  await sendOtpEmail(normalizedEmail, otp);
+};
+
+const verifyPasswordResetOtp = async (email, otp) => {
+  const normalizedEmail = normalizeEmail(email);
+  const entry = passwordResetOtpStore.get(normalizedEmail);
+
+  if (!entry || entry.otp !== otp) {
+    throw new AppError("Invalid or expired OTP", 400);
+  }
+
+  if (entry.expiresAt < Date.now()) {
+    passwordResetOtpStore.delete(normalizedEmail);
+    throw new AppError("Invalid or expired OTP", 400);
+  }
+
+  entry.verified = true;
+  passwordResetOtpStore.set(normalizedEmail, entry);
+};
+
+const resetPassword = async ({ email, otp, newPassword, confirmPassword }) => {
+  const normalizedEmail = normalizeEmail(email);
+  const entry = passwordResetOtpStore.get(normalizedEmail);
+
+  if (!entry || entry.otp !== otp || !entry.verified) {
+    throw new AppError(
+      "OTP verification is required before resetting the password",
+      400,
+    );
+  }
+
+  if (entry.expiresAt < Date.now()) {
+    passwordResetOtpStore.delete(normalizedEmail);
+    throw new AppError("Invalid or expired OTP", 400);
+  }
+
+  if (newPassword !== confirmPassword) {
+    throw new AppError("Passwords do not match", 400);
+  }
+
+  const user = await usersRepo.findByEmail(normalizedEmail);
+  if (!user) throw new AppError("User not found", 404);
+
+  checkUserStatus(user);
+
+  const hashed = await bcrypt.hash(newPassword, 10);
+  await usersRepo.update(user.user_id, { password: hashed });
+  passwordResetOtpStore.delete(normalizedEmail);
+};
+
 const changePassword = async (userId, { old_password, new_password }) => {
   const { data: user } = await require("../../config/supabase")
     .from("users")
@@ -204,6 +320,9 @@ module.exports = {
   loginWithGoogle,
   getMe,
   changePassword,
+  sendPasswordResetOtp,
+  verifyPasswordResetOtp,
+  resetPassword,
   verifyGoogleIdToken,
   exchangeGoogleCode,
 };

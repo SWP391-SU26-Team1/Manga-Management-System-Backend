@@ -84,6 +84,38 @@ const changePassword = async (req, res, next) => {
   }
 };
 
+const forgotPassword = async (req, res, next) => {
+  try {
+    await authService.sendPasswordResetOtp(req.body.email);
+    return sendSuccess(
+      res,
+      200,
+      null,
+      "Password reset OTP has been sent to your email",
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+const verifyPasswordOtp = async (req, res, next) => {
+  try {
+    await authService.verifyPasswordResetOtp(req.body.email, req.body.otp);
+    return sendSuccess(res, 200, null, "OTP verified successfully");
+  } catch (error) {
+    next(error);
+  }
+};
+
+const resetPassword = async (req, res, next) => {
+  try {
+    await authService.resetPassword(req.body);
+    return sendSuccess(res, 200, null, "Password reset successfully");
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -91,4 +123,7 @@ module.exports = {
   logout,
   getMe,
   changePassword,
+  forgotPassword,
+  verifyPasswordOtp,
+  resetPassword,
 };

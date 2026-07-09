@@ -1,9 +1,9 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const { authenticateToken } = require('../../middlewares/auth.middleware');
-const { validate } = require('../../middlewares/validate.middleware');
-const v = require('./auth.validation');
-const controller = require('./auth.controller');
+const { authenticateToken } = require("../../middlewares/auth.middleware");
+const { validate } = require("../../middlewares/validate.middleware");
+const v = require("./auth.validation");
+const controller = require("./auth.controller");
 
 /**
  * @swagger
@@ -29,7 +29,7 @@ const controller = require('./auth.controller');
  *       400: { description: Validation error }
  *       409: { description: Email/username already exists }
  */
-router.post('/register', validate(v.registerSchema), controller.register);
+router.post("/register", validate(v.registerSchema), controller.register);
 
 /**
  * @swagger
@@ -64,7 +64,7 @@ router.post('/register', validate(v.registerSchema), controller.register);
  *                     user: { type: object }
  *       401: { description: Invalid credentials }
  */
-router.post('/login', validate(v.loginSchema), controller.login);
+router.post("/login", validate(v.loginSchema), controller.login);
 
 /**
  * @swagger
@@ -87,7 +87,11 @@ router.post('/login', validate(v.loginSchema), controller.login);
  *       400: { description: Missing or invalid idToken }
  *       403: { description: Account suspended or banned }
  */
-router.post('/login-google', validate(v.loginGoogleSchema), controller.loginWithGoogle);
+router.post(
+  "/login-google",
+  validate(v.loginGoogleSchema),
+  controller.loginWithGoogle,
+);
 
 /**
  * @swagger
@@ -98,7 +102,7 @@ router.post('/login-google', validate(v.loginGoogleSchema), controller.loginWith
  *     responses:
  *       200: { description: Logged out }
  */
-router.post('/logout', authenticateToken, controller.logout);
+router.post("/logout", authenticateToken, controller.logout);
 
 /**
  * @swagger
@@ -110,7 +114,7 @@ router.post('/logout', authenticateToken, controller.logout);
  *       200: { description: Current user info }
  *       401: { description: Unauthorized }
  */
-router.get('/me', authenticateToken, controller.getMe);
+router.get("/me", authenticateToken, controller.getMe);
 
 /**
  * @swagger
@@ -131,6 +135,27 @@ router.get('/me', authenticateToken, controller.getMe);
  *     responses:
  *       200: { description: Password changed }
  */
-router.patch('/change-password', authenticateToken, validate(v.changePasswordSchema), controller.changePassword);
+router.patch(
+  "/change-password",
+  authenticateToken,
+  validate(v.changePasswordSchema),
+  controller.changePassword,
+);
+
+router.post(
+  "/forgot-password",
+  validate(v.forgotPasswordSchema),
+  controller.forgotPassword,
+);
+router.post(
+  "/verify-password-otp",
+  validate(v.verifyPasswordOtpSchema),
+  controller.verifyPasswordOtp,
+);
+router.post(
+  "/reset-password",
+  validate(v.resetPasswordSchema),
+  controller.resetPassword,
+);
 
 module.exports = router;
