@@ -233,10 +233,7 @@ const sendPasswordResetOtp = async (email) => {
   const normalizedEmail = normalizeEmail(email);
   const user = await usersRepo.findByEmail(normalizedEmail);
   if (!user) {
-    throw new AppError(
-      "If an account exists for this email, an OTP has been sent",
-      200,
-    );
+    throw new AppError("No account found for this email address", 404);
   }
 
   checkUserStatus(user);
