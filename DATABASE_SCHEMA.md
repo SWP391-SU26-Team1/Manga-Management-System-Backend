@@ -86,6 +86,87 @@ Unique constraints: `UNIQUE (series_id, user_id)`
 
 Indexes: `idx_series_member_series_id`, `idx_series_member_user_id`
 
+### bookmark
+
+Primary key: `bookmark_id`
+
+Columns:
+
+| Column             | Type      | Required | Default             | Notes                                    |
+| ------------------ | --------- | -------- | ------------------- | ---------------------------------------- |
+| `bookmark_id`      | UUID      | yes      | `gen_random_uuid()` | PK                                       |
+| `user_id`          | UUID      | yes      |                     | FK to `users.user_id`, cascade delete    |
+| `series_id`        | UUID      | yes      |                     | FK to `series.series_id`, cascade delete |
+| `chapter_id`       | UUID      | no       |                     | FK to `chapter.chapter_id`, set null     |
+| `progress_percent` | INT       | no       | `0`                 |                                          |
+| `last_read_at`     | TIMESTAMP | no       | `CURRENT_TIMESTAMP` |                                          |
+
+Unique constraints: `UNIQUE (user_id, series_id)`
+
+Indexes: `idx_bookmark_user_id`, `idx_bookmark_series_id`
+
+### bookmark
+
+Primary key: `bookmark_id`
+
+Columns:
+
+| Column                 | Type        | Required | Default             | Notes                      |
+| ---------------------- | ----------- | -------- | ------------------- | -------------------------- |
+| `bookmark_id`          | UUID        | yes      | `gen_random_uuid()` | PK                         |
+| `user_id`              | UUID        | yes      |                     | FK to `users.user_id`      |
+| `series_id`            | UUID        | yes      |                     | FK to `series.series_id`   |
+| `last_read_chapter_id` | UUID        | no       |                     | FK to `chapter.chapter_id` |
+| `page_id`              | UUID        | no       |                     | FK to `page.page_id`       |
+| `created_at`           | TIMESTAMPTZ | no       | `now()`             |                            |
+| `updated_at`           | TIMESTAMPTZ | no       | `now()`             |                            |
+
+Unique constraints: `UNIQUE (user_id, series_id)`
+
+### chapter_like
+
+Primary key: `like_id`
+
+Columns:
+
+| Column       | Type        | Required | Default             | Notes                      |
+| ------------ | ----------- | -------- | ------------------- | -------------------------- |
+| `like_id`    | UUID        | yes      | `gen_random_uuid()` | PK                         |
+| `user_id`    | UUID        | yes      |                     | FK to `users.user_id`      |
+| `chapter_id` | UUID        | yes      |                     | FK to `chapter.chapter_id` |
+| `created_at` | TIMESTAMPTZ | no       | `now()`             |                            |
+
+Unique constraints: `UNIQUE (user_id, chapter_id)`
+
+### view_log
+
+Primary key: `log_id`
+
+Columns:
+
+| Column       | Type        | Required | Default             | Notes                      |
+| ------------ | ----------- | -------- | ------------------- | -------------------------- |
+| `log_id`     | UUID        | yes      | `gen_random_uuid()` | PK                         |
+| `chapter_id` | UUID        | yes      |                     | FK to `chapter.chapter_id` |
+| `created_at` | TIMESTAMPTZ | no       | `now()`             |                            |
+
+### comment
+
+Primary key: `comment_id`
+
+Columns:
+
+| Column              | Type        | Required | Default             | Notes                      |
+| ------------------- | ----------- | -------- | ------------------- | -------------------------- |
+| `comment_id`        | UUID        | yes      | `gen_random_uuid()` | PK                         |
+| `user_id`           | UUID        | yes      |                     | FK to `users.user_id`      |
+| `chapter_id`        | UUID        | yes      |                     | FK to `chapter.chapter_id` |
+| `parent_comment_id` | UUID        | no       |                     | FK to `comment.comment_id` |
+| `content`           | TEXT        | yes      |                     |                            |
+| `status`            | VARCHAR(50) | yes      | `active`            |                            |
+| `created_at`        | TIMESTAMPTZ | no       | `now()`             |                            |
+| `updated_at`        | TIMESTAMPTZ | no       | `now()`             |                            |
+
 ### chapter
 
 Primary key: `chapter_id`
@@ -448,22 +529,22 @@ Primary key: `suggestion_id`
 
 Columns:
 
-| Column | Type | Required | Default | Notes |
-| --- | --- | --- | --- | --- |
-| `suggestion_id` | UUID | yes | `gen_random_uuid()` | PK |
-| `page_id` | UUID | yes | | FK to `page.page_id`, cascade delete |
-| `region_id` | UUID | no | | FK to `page_region.region_id`, set null |
-| `task_id` | UUID | no | | FK to `page_task.task_id`, set null |
-| `requested_by_id` | UUID | yes | | FK to `users.user_id`, cascade delete |
-| `attempt_number` | INTEGER | yes | `1` | Count number of AI runs for this task |
-| `ai_model` | VARCHAR(100) | no | | |
-| `prompt` | TEXT | no | | |
-| `reference_image_url` | TEXT | no | | |
-| `result_data` | JSONB | no | | |
-| `status` | VARCHAR(50) | yes | `processing` | check constraint |
-| `processing_time_ms`| INTEGER | no | | |
-| `created_at` | TIMESTAMPTZ  | no | `now()` | |
-| `updated_at` | TIMESTAMPTZ  | no | `now()` | update trigger |
+| Column                | Type         | Required | Default             | Notes                                   |
+| --------------------- | ------------ | -------- | ------------------- | --------------------------------------- |
+| `suggestion_id`       | UUID         | yes      | `gen_random_uuid()` | PK                                      |
+| `page_id`             | UUID         | yes      |                     | FK to `page.page_id`, cascade delete    |
+| `region_id`           | UUID         | no       |                     | FK to `page_region.region_id`, set null |
+| `task_id`             | UUID         | no       |                     | FK to `page_task.task_id`, set null     |
+| `requested_by_id`     | UUID         | yes      |                     | FK to `users.user_id`, cascade delete   |
+| `attempt_number`      | INTEGER      | yes      | `1`                 | Count number of AI runs for this task   |
+| `ai_model`            | VARCHAR(100) | no       |                     |                                         |
+| `prompt`              | TEXT         | no       |                     |                                         |
+| `reference_image_url` | TEXT         | no       |                     |                                         |
+| `result_data`         | JSONB        | no       |                     |                                         |
+| `status`              | VARCHAR(50)  | yes      | `processing`        | check constraint                        |
+| `processing_time_ms`  | INTEGER      | no       |                     |                                         |
+| `created_at`          | TIMESTAMPTZ  | no       | `now()`             |                                         |
+| `updated_at`          | TIMESTAMPTZ  | no       | `now()`             | update trigger                          |
 
 Status values: `processing`, `completed`, `failed`, `cancelled`, `applied`, `rejected`
 

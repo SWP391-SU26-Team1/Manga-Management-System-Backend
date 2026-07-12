@@ -23,7 +23,7 @@ const buildTaskQuery = (filters) => {
   let query = supabase
     .from("page_task")
     .select(
-      `*, users!fk_page_task_assistant(user_id, username, email), users!fk_page_task_assigned_by(user_id, username, email)`,
+      `*, assistant:users!fk_page_task_assistant(user_id, username, email), assigned_by:users!fk_page_task_assigned_by(user_id, username, email)`,
       { count: "exact" },
     );
   if (filters.pageId) query = query.eq("page_id", filters.pageId);
@@ -43,7 +43,7 @@ const listTasks = async (pageId, filters) => {
   let query = supabase
     .from("page_task")
     .select(
-      "*, users!fk_page_task_assistant(user_id,username,email), users!fk_page_task_assigned_by(user_id,username,email)",
+      "*, assistant:users!fk_page_task_assistant(user_id,username,email), assigned_by:users!fk_page_task_assigned_by(user_id,username,email)",
       { count: "exact" },
     )
     .eq("page_id", pageId);
@@ -63,7 +63,7 @@ const listAllSeriesTasks = async (seriesId, filters) => {
   let query = supabase
     .from("page_task")
     .select(
-      "*, page:page_id(chapter:chapter_id(series_id)), users!fk_page_task_assistant(user_id,username,email)",
+      "*, page:page_id(chapter:chapter_id(series_id)), assistant:users!fk_page_task_assistant(user_id,username,email), assigned_by:users!fk_page_task_assigned_by(user_id,username,email)",
       { count: "exact" },
     );
   if (filters.status) query = query.eq("status", filters.status);

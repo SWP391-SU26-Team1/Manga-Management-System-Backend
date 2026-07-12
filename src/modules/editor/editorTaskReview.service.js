@@ -7,7 +7,7 @@ const {
 } = require("../../utils/notification.helper");
 const AppError = require("../../utils/appError");
 
-const TASK_SELECT = `*, page:page_id(page_id,page_number,chapter:chapter_id(chapter_id,title,series:series_id(series_id,title))), users!fk_page_task_assistant(user_id,username,email), users!fk_page_task_assigned_by(user_id,username,email)`;
+const TASK_SELECT = `*, page:page_id(page_id,page_number,chapter:chapter_id(chapter_id,title,series:series_id(series_id,title))), assistant:users!fk_page_task_assistant(user_id,username,email), assigned_by:users!fk_page_task_assigned_by(user_id,username,email)`;
 
 const listReviewTasks = async (filters) => {
   // Get page IDs if filtering by chapter or series (Supabase doesn't support nested filter directly)
