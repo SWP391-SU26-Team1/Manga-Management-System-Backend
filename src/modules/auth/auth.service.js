@@ -29,20 +29,14 @@ const sendOtpEmail = async (email, otp) => {
   const smtpPass = process.env.EMAIL_PASS;
 
   if (!smtpUser || !smtpPass) {
-    if (process.env.NODE_ENV !== "test") {
-      console.info(`[auth] SMTP credentials missing; OTP for ${email}: ${otp}`);
-    }
-    return;
+    throw new AppError("Email service is not configured", 500);
   }
 
   let nodemailer;
   try {
     nodemailer = require("nodemailer");
   } catch (error) {
-    console.warn(
-      "nodemailer is not installed; skipping password reset email delivery",
-    );
-    return;
+    throw new AppError("Email service is not available", 500);
   }
 
   const transporter = nodemailer.createTransport({
@@ -52,12 +46,17 @@ const sendOtpEmail = async (email, otp) => {
     auth: { user: smtpUser, pass: smtpPass },
   });
 
-  await transporter.sendMail({
-    from: process.env.EMAIL_FROM || smtpUser,
-    to: email,
-    subject: "Manga Management password reset OTP",
-    text: `Your password reset OTP is ${otp}. It will expire in 10 minutes.`,
-  });
+  try {
+    await transporter.sendMail({
+      from: process.env.EMAIL_FROM || smtpUser,
+      to: email,
+      subject: "Manga Management password reset OTP",
+      text: `Your password reset OTP is ${otp}. It will expire in 10 minutes.`,
+    });
+  } catch (error) {
+    console.error("[auth] Failed to send OTP email:", error);
+    throw new AppError("Failed to send password reset email", 500);
+  }
 };
 
 const verifyGoogleIdToken = async (idToken) => {
