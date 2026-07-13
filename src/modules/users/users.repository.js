@@ -34,7 +34,7 @@ const findByEmail = async (email) => {
   const { data, error } = await supabase
     .from('users')
     .select('*')
-    .eq('email', email)
+    .ilike('email', email)
     .maybeSingle();
   if (error) throw error;
   return data;
