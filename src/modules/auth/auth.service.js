@@ -29,7 +29,11 @@ const sendOtpEmail = async (email, otp) => {
   const smtpPass = process.env.EMAIL_PASS;
 
   if (!smtpUser || !smtpPass) {
-    throw new AppError("Email service is not configured", 500);
+    if (process.env.NODE_ENV === "production") {
+      throw new AppError("Email service is not configured", 500);
+    }
+    console.info(`[Local Test] SMTP credentials missing; OTP for ${email}: ${otp}`);
+    return;
   }
 
   let nodemailer;
