@@ -51,4 +51,20 @@ const deleteRegionByPage = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
-module.exports = { listRegions, getRegionById, getRegionsByPage, createRegion, updateRegion, deleteRegion, deleteRegionByPage };
+const bulkCreateRegions = async (req, res, next) => {
+  try {
+    const data = await service.bulkCreateRegions(req.params.pageId, req.body.regions, req.body.suggestion_id);
+    return sendSuccess(res, 201, data, 'Regions created');
+  } catch (error) { next(error); }
+};
+
+module.exports = { 
+  listRegions, 
+  getRegionById, 
+  getRegionsByPage, 
+  createRegion, 
+  bulkCreateRegions, 
+  updateRegion, 
+  deleteRegion, 
+  deleteRegionByPage 
+};

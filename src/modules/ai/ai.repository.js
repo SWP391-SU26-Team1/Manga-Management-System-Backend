@@ -69,7 +69,7 @@ const update = async (suggestionId, payload) => {
   return data;
 };
 
-const updateCompleted = async (suggestionId, { resultData, processingTimeMs, aiModel }) => {
+const updateCompleted = async (suggestionId, { resultData, processingTimeMs, aiModel, prompt }) => {
   const payload = {
     status: 'completed',
     result_data: resultData,
@@ -77,6 +77,9 @@ const updateCompleted = async (suggestionId, { resultData, processingTimeMs, aiM
   };
   if (aiModel) {
     payload.ai_model = aiModel;
+  }
+  if (prompt) {
+    payload.prompt = prompt;
   }
   return update(suggestionId, payload);
 };

@@ -50,4 +50,39 @@ const deleteRegionByPage = async (pageId, regionId) => {
   await regionsRepo.deleteById(regionId);
 };
 
-module.exports = { listRegions, getRegionById, getRegionsByPage, createRegion, updateRegion, deleteRegion, deleteRegionByPage };
+const bulkCreateRegions = async (pageId, regions, suggestionId) => {
+  const pageExists = await pagesRepo.existsById(pageId);
+  if (!pageExists) throw new AppError('Page not found', 404);
+
+  // Map and clean up payloads to exactly match DB table columns
+  const payloads = regions.map((r) => ({
+    page_id: pageId,
+    x: Math.round(Number(r.x)),
+    y: Math.round(Number(r.y)),
+    width: Math.round(Number(r.width)),
+    height: Math.round(Number(r.height)),
+  }));
+
+  const data = await regionsRepo.bulkCreate(payloads);
+
+  if (suggestionId) {
+    try {
+      await aiRepo.markApplied(suggestionId);
+    } catch (err) {
+      console.error('⚠️ Failed to mark AI suggestion as applied:', err.message);
+    }
+  }
+
+  return data;
+};
+
+module.exports = { 
+  listRegions, 
+  getRegionById, 
+  getRegionsByPage, 
+  createRegion, 
+  bulkCreateRegions, 
+  updateRegion, 
+  deleteRegion, 
+  deleteRegionByPage 
+};

@@ -1,4 +1,4 @@
-﻿const { z } = require('zod');
+const { z } = require('zod');
 const { PAGE_TASK_STATUS } = require('../../constants/status');
 
 const uuidParam = z.string().regex(
@@ -56,6 +56,15 @@ const assistantTasksSchema = z.object({
   }),
 });
 
+const createSubmissionSchema = z.object({
+  params: z.object({ taskId: uuidParam }),
+  body: z.object({
+    file_url: z.string().url(),
+    submission_notes: z.string().optional(),
+    suggestion_id: uuidParam.optional(),
+  }),
+});
+
 module.exports = {
   createTaskSchema,
   updateTaskSchema,
@@ -64,4 +73,5 @@ module.exports = {
   pageIdParamSchema,
   listTasksSchema,
   assistantTasksSchema,
+  createSubmissionSchema,
 };

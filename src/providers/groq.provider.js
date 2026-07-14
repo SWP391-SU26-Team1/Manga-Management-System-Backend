@@ -102,7 +102,45 @@ const detectPanels = async (imageUrl, prompt) => {
   }
 };
 
+const expandColoringPrompt = async (userPrompt, taskContent) => {
+  if (!groq) {
+    return userPrompt || '';
+  }
+
+  const systemInstruction = `You are a professional prompt engineer for AI image generators (like FLUX and Stable Diffusion).
+Your task is to take a short, simple user coloring prompt and a task description (which might be in Vietnamese), and expand/translate them into a highly detailed, professional English prompt for coloring/editing a manga/comic page.
+
+Requirements:
+- Translate any Vietnamese terms into appropriate artistic English terms.
+- Enrich the prompt with professional details (style, shading, color palette, lighting, quality boosters).
+- Maintain the original intent of the task description (e.g. if task says "sửa mắt" -> focus on coloring the eyes beautifully).
+- Output ONLY the final expanded prompt. Do not add any conversational text, explanations, intro or outro. Just the prompt text itself.`;
+
+  const userContent = `User Prompt: ${userPrompt || 'None'}
+Task Description: ${taskContent || 'None'}`;
+
+  try {
+    const chatCompletion = await groq.chat.completions.create({
+      messages: [
+        { role: 'system', content: systemInstruction },
+        { role: 'user', content: userContent }
+      ],
+      model: 'llama-3.1-8b-instant',
+      temperature: 0.7,
+      max_tokens: 256,
+    });
+
+    const result = chatCompletion.choices?.[0]?.message?.content?.trim();
+    console.log('🤖 Expanded Prompt via Groq LLM:', result);
+    return result || userPrompt || '';
+  } catch (err) {
+    console.error('⚠️ Failed to expand prompt via Groq LLM, using fallback:', err.message);
+    return userPrompt || '';
+  }
+};
+
 
 module.exports = {
   detectPanels,
+  expandColoringPrompt,
 };
