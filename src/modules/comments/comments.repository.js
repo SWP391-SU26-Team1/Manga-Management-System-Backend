@@ -38,4 +38,21 @@ const listCommentsByChapter = async ({ chapterId, offset, limit }) => {
   return { data, total: count };
 };
 
-module.exports = { createComment, listCommentsByChapter };
+const listCommentsBySeries = async ({ seriesId, offset, limit }) => {
+  const { data, error, count } = await supabase
+    .from("comment")
+    .select(`
+      *, 
+      user: user_id (user_id, username, name, avatar_url),
+      chapter!inner (series_id, chapter_number, title)
+    `, { count: "exact" })
+    .eq("chapter.series_id", seriesId)
+    .is("parent_comment_id", null)
+    .order("created_at", { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error) throw error;
+  return { data, total: count };
+};
+
+module.exports = { createComment, listCommentsByChapter, listCommentsBySeries };

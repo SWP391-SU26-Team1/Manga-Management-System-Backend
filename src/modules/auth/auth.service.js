@@ -28,11 +28,38 @@ const sendOtpEmail = async (email, otp) => {
   const smtpUser = process.env.EMAIL_USER;
   const smtpPass = process.env.EMAIL_PASS;
 
-  if (!smtpUser || !smtpPass) {
+  const isPlaceholder = (val) => {
+    if (!val) return true;
+    const lower = val.trim().toLowerCase();
+    const normalized = lower
+      .replace(/^["']|["']$/g, "")
+      .replace(/\s+#.*$/g, "")
+      .replace(/[\s_]+/g, "-");
+
+    return (
+      normalized === "your-email@gmail.com" ||
+      normalized === "your-app-password" ||
+      normalized === "your-gmail-app-password" ||
+      normalized === "email-cua-ban@gmail.com" ||
+      normalized === "mat-khau-ung-dung-gmail-16-ky-tu" ||
+      normalized.startsWith("your-") ||
+      normalized.startsWith("change-me") ||
+      normalized.startsWith("replace-with")
+    );
+  };
+
+  const isConfigMissing =
+    !smtpUser || !smtpPass || isPlaceholder(smtpUser) || isPlaceholder(smtpPass);
+
+  const devEmail = process.env.EMAIL_TO_DEV;
+  const isDevMode = process.env.NODE_ENV !== "production";
+  const recipient = (isDevMode && devEmail && !isPlaceholder(devEmail)) ? devEmail : email;
+
+  if (isConfigMissing) {
     if (process.env.NODE_ENV === "production") {
       throw new AppError("Email service is not configured", 500);
     }
-    console.info(`[Local Test] SMTP credentials missing; OTP for ${email}: ${otp}`);
+    console.info(`[Local Test] SMTP credentials missing or placeholder; OTP for ${recipient}: ${otp}`);
     return;
   }
 
@@ -51,13 +78,23 @@ const sendOtpEmail = async (email, otp) => {
   });
 
   try {
+    if (isDevMode && recipient !== email) {
+      console.info(`[Local Test] Redirecting OTP email from ${email} to developer test email: ${recipient}`);
+    }
     await transporter.sendMail({
       from: process.env.EMAIL_FROM || smtpUser,
-      to: email,
+      to: recipient,
       subject: "Manga Management password reset OTP",
       text: `Your password reset OTP is ${otp}. It will expire in 10 minutes.`,
     });
   } catch (error) {
+    if (isDevMode) {
+      console.warn(
+        `[Local Test] Failed to send actual email via SMTP to ${recipient}, falling back to console log. Error: ${error.message}`
+      );
+      console.info(`[Local Test] OTP for ${recipient}: ${otp}`);
+      return;
+    }
     console.error("[auth] Failed to send OTP email:", error);
     throw new AppError("Failed to send password reset email", 500);
   }

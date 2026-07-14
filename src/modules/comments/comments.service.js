@@ -25,4 +25,9 @@ const listComments = async ({ chapterId, page, limit, offset }) => {
   return commentsRepo.listCommentsByChapter({ chapterId, offset, limit });
 };
 
-module.exports = { createComment, listComments };
+const listCommentsBySeries = async ({ seriesId, page, limit, offset }) => {
+  if (!seriesId) throw new AppError("seriesId is required", 400);
+  return commentsRepo.listCommentsBySeries({ seriesId, offset, limit });
+};
+
+module.exports = { createComment, listComments, listCommentsBySeries };

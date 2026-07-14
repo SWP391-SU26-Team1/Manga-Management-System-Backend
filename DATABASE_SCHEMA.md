@@ -148,6 +148,8 @@ Columns:
 | ------------ | ----------- | -------- | ------------------- | -------------------------- |
 | `log_id`     | UUID        | yes      | `gen_random_uuid()` | PK                         |
 | `chapter_id` | UUID        | yes      |                     | FK to `chapter.chapter_id` |
+| `series_id`  | UUID        | no       |                     | FK to `series.series_id`   |
+| `user_id`    | UUID        | no       |                     | FK to `users.user_id`      |
 | `created_at` | TIMESTAMPTZ | no       | `now()`             |                            |
 
 ### comment
