@@ -29,4 +29,24 @@ const deleteByPageSchema = z.object({
   params: z.object({ pageId: uuidParam, regionId: uuidParam }),
 });
 
-module.exports = { createRegionSchema, updateRegionSchema, regionIdParamSchema, pageIdParamSchema, deleteByPageSchema };
+const bulkCreateRegionSchema = z.object({
+  params: z.object({ pageId: uuidParam }),
+  body: z.object({
+    regions: z.array(z.object({
+      x: z.number(),
+      y: z.number(),
+      width: z.number().positive(),
+      height: z.number().positive(),
+    }).passthrough()).min(1),
+    suggestion_id: uuidParam.optional(),
+  }),
+});
+
+module.exports = { 
+  createRegionSchema, 
+  updateRegionSchema, 
+  regionIdParamSchema, 
+  pageIdParamSchema, 
+  deleteByPageSchema,
+  bulkCreateRegionSchema
+};

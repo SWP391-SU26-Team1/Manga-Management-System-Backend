@@ -24,6 +24,12 @@ const create = async (payload) => {
   return data;
 };
 
+const bulkCreate = async (payloads) => {
+  const { data, error } = await supabase.from('page_region').insert(payloads).select('*');
+  if (error) throw error;
+  return data;
+};
+
 const update = async (regionId, payload) => {
   const { data, error } = await supabase.from('page_region').update(payload).eq('region_id', regionId).select('*').single();
   if (error) throw error;
@@ -52,4 +58,4 @@ const existsByIdAndPageId = async (regionId, pageId) => {
   return !!data;
 };
 
-module.exports = { findAll, findById, findByPageId, create, update, deleteById, existsById, existsByIdAndPageId };
+module.exports = { findAll, findById, findByPageId, create, bulkCreate, update, deleteById, existsById, existsByIdAndPageId };
