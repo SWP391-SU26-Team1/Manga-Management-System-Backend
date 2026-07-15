@@ -51,7 +51,7 @@ const findByIdWithDetail = async (seriesId) => {
   const { data, error } = await supabase
     .from("series")
     .select(
-      `*, chapter(*), series_member(*, users:user_id(user_id, username, name, avatar_url, role))`,
+      `*, chapter(*, chapter_like(like_id)), series_member(*, users:user_id(user_id, username, name, avatar_url, role))`,
     )
     .eq("series_id", seriesId)
     .maybeSingle();

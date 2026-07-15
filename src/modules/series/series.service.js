@@ -12,7 +12,19 @@ const getSeriesById = async (seriesId) => {
 const getSeriesDetail = async (seriesId) => {
   const series = await seriesRepo.findByIdWithDetail(seriesId);
   if (!series) throw new AppError('Series not found', 404);
-  return series;
+  
+  let total_views = 0;
+  let total_likes = 0;
+
+  if (series.chapter && Array.isArray(series.chapter)) {
+    series.chapter.forEach(ch => {
+      total_views += (ch.view_count || 0);
+      total_likes += (ch.chapter_like ? ch.chapter_like.length : 0);
+      delete ch.chapter_like;
+    });
+  }
+
+  return { ...series, total_views, total_likes };
 };
 
 const createSeries = async (payload) => {

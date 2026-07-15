@@ -38,52 +38,62 @@ const calculateRanking = async (periodId) => {
 
   await periodsRepo.update(periodId, { status: 'calculating' });
 
-  const { data: votes, error } = await supabase
-    .from('vote')
-    .select('session_id, score, review_session!fk_vote_session(series_id, chapter_id)')
-    .eq('status', 'verified');
+  // Fetch all chapters with view_count and likes
+  const { data: chapters, error } = await supabase
+    .from('chapter')
+    .select('chapter_id, series_id, view_count, chapter_like(like_id)');
 
   if (error) throw error;
 
   const seriesScores = {};
   const chapterScores = {};
 
-  for (const vote of votes || []) {
-    const session = vote.review_session || vote['review_session!fk_vote_session'];
-    if (!session) continue;
-    const score = vote.score || 0;
+  const VIEW_WEIGHT = 1;
+  const LIKE_WEIGHT = 2;
 
-    if (session.series_id) {
-      if (!seriesScores[session.series_id]) seriesScores[session.series_id] = { total: 0, count: 0 };
-      seriesScores[session.series_id].total += score;
-      seriesScores[session.series_id].count += 1;
+  for (const ch of chapters || []) {
+    if (!ch.series_id) continue;
+    
+    const views = ch.view_count || 0;
+    const likes = ch.chapter_like ? ch.chapter_like.length : 0;
+    const score = (views * VIEW_WEIGHT) + (likes * LIKE_WEIGHT);
+
+    // Chapter score
+    chapterScores[ch.chapter_id] = {
+      series_id: ch.series_id,
+      score: score,
+      views: views,
+      likes: likes
+    };
+
+    // Aggregate for series
+    if (!seriesScores[ch.series_id]) {
+      seriesScores[ch.series_id] = { score: 0, views: 0, likes: 0 };
     }
-    if (session.chapter_id) {
-      if (!chapterScores[session.chapter_id]) chapterScores[session.chapter_id] = { total: 0, count: 0, series_id: session.series_id };
-      chapterScores[session.chapter_id].total += score;
-      chapterScores[session.chapter_id].count += 1;
-    }
+    seriesScores[ch.series_id].score += score;
+    seriesScores[ch.series_id].views += views;
+    seriesScores[ch.series_id].likes += likes;
   }
 
   const seriesRankings = Object.entries(seriesScores)
-    .sort((a, b) => b[1].total - a[1].total)
+    .sort((a, b) => b[1].score - a[1].score)
     .map(([series_id, s], i) => ({
       period_id: periodId,
       series_id,
       rank_position: i + 1,
-      score: s.count > 0 ? s.total / s.count : 0,
-      total_vote: s.count,
+      score: s.score,
+      total_vote: s.likes,
     }));
 
   const chapterRankings = Object.entries(chapterScores)
-    .sort((a, b) => b[1].total - a[1].total)
+    .sort((a, b) => b[1].score - a[1].score)
     .map(([chapter_id, c], i) => ({
       period_id: periodId,
       series_id: c.series_id,
       chapter_id,
       rank_position: i + 1,
-      score: c.count > 0 ? c.total / c.count : 0,
-      total_vote: c.count,
+      score: c.score,
+      total_vote: c.likes,
     }));
 
   if (seriesRankings.length > 0) {
