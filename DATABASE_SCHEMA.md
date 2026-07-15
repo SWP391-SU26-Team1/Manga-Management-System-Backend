@@ -552,6 +552,78 @@ Status values: `processing`, `completed`, `failed`, `cancelled`, `applied`, `rej
 
 Indexes: `idx_ai_suggestion_page_id`, `idx_ai_suggestion_region_id`, `idx_ai_suggestion_task_id`, `idx_ai_suggestion_status`, `idx_ai_suggestion_requested_by`, `idx_ai_suggestion_created_at`
 
+### bookmark
+
+Primary key: `bookmark_id`
+
+Columns:
+
+| Column | Type | Required | Default | Notes |
+| --- | --- | --- | --- | --- |
+| `bookmark_id` | UUID | yes | `gen_random_uuid()` | PK |
+| `user_id` | UUID | yes | | FK to `users.user_id`, cascade delete |
+| `series_id` | UUID | yes | | FK to `series.series_id`, cascade delete |
+| `last_read_chapter_id` | UUID | no | | FK to `chapter.chapter_id`, set null |
+| `page_id` | UUID | no | | FK to `page.page_id`, set null |
+| `created_at` | TIMESTAMPTZ | no | `now()` | |
+| `updated_at` | TIMESTAMPTZ | no | `now()` | update trigger |
+
+Unique constraints: `uq_bookmark_user_series` UNIQUE (`user_id`, `series_id`)
+
+Indexes: `idx_bookmark_user_id`
+
+### chapter_like
+
+Primary key: `like_id`
+
+Columns:
+
+| Column | Type | Required | Default | Notes |
+| --- | --- | --- | --- | --- |
+| `like_id` | UUID | yes | `gen_random_uuid()` | PK |
+| `user_id` | UUID | yes | | FK to `users.user_id`, cascade delete |
+| `chapter_id` | UUID | yes | | FK to `chapter.chapter_id`, cascade delete |
+| `created_at` | TIMESTAMPTZ | no | `now()` | |
+
+Unique constraints: `uq_chapter_like_user_chapter` UNIQUE (`user_id`, `chapter_id`)
+
+Indexes: `idx_chapter_like_chapter_id`
+
+### view_log
+
+Primary key: `log_id`
+
+Columns:
+
+| Column | Type | Required | Default | Notes |
+| --- | --- | --- | --- | --- |
+| `log_id` | UUID | yes | `gen_random_uuid()` | PK |
+| `chapter_id` | UUID | yes | | FK to `chapter.chapter_id`, cascade delete |
+| `created_at` | TIMESTAMPTZ | no | `now()` | |
+
+Indexes: `idx_view_log_chapter_id`, `idx_view_log_created_at`
+
+### comment
+
+Primary key: `comment_id`
+
+Columns:
+
+| Column | Type | Required | Default | Notes |
+| --- | --- | --- | --- | --- |
+| `comment_id` | UUID | yes | `gen_random_uuid()` | PK |
+| `user_id` | UUID | yes | | FK to `users.user_id`, cascade delete |
+| `chapter_id` | UUID | yes | | FK to `chapter.chapter_id`, cascade delete |
+| `parent_comment_id` | UUID | no | | FK to `comment.comment_id`, cascade delete (parent reply) |
+| `content` | TEXT | yes | | |
+| `status` | VARCHAR(50) | yes | `active` | check constraint |
+| `created_at` | TIMESTAMPTZ | no | `now()` | |
+| `updated_at` | TIMESTAMPTZ | no | `now()` | update trigger |
+
+Status values: `active`, `hidden`, `deleted`, `flagged`
+
+Indexes: `idx_comment_chapter_id`, `idx_comment_parent_id`
+
 ## Status Constants
 
 When implementing validation, mirror these in `src/constants/status.js`.
@@ -652,7 +724,7 @@ const PAGE_AI_SUGGESTION_STATUS = [
 
 ## Supabase Relationship Notes
 
-Use table names exactly as defined: `users`, `notification`, `series`, `series_member`, `chapter`, `page`, `page_region`, `page_task`, `page_version`, `page_submission`, `page_task_feedback`, `annotation`, `review_session`, `vote`, `ranking_period`, `series_ranking`, `chapter_ranking`, `manuscript`, `manuscript_file`, `page_ai_suggestion`.
+Use table names exactly as defined: `users`, `notification`, `series`, `series_member`, `chapter`, `page`, `page_region`, `page_task`, `page_version`, `page_submission`, `page_task_feedback`, `annotation`, `review_session`, `vote`, `ranking_period`, `series_ranking`, `chapter_ranking`, `manuscript`, `manuscript_file`, `page_ai_suggestion`, `bookmark`, `chapter_like`, `view_log`, `comment`.
 
 Important foreign key constraint names for joined selects:
 
@@ -697,6 +769,16 @@ Important foreign key constraint names for joined selects:
 | `page_ai_suggestion` | `region_id`          | `fk_ai_suggestion_region`       | `page_region.region_id`         |
 | `page_ai_suggestion` | `task_id`            | `fk_ai_suggestion_task`         | `page_task.task_id`             |
 | `page_ai_suggestion` | `requested_by_id`    | `fk_ai_suggestion_user`         | `users.user_id`                 |
+| `bookmark`           | `user_id`            | `fk_bookmark_user`              | `users.user_id`                 |
+| `bookmark`           | `series_id`          | `fk_bookmark_series`            | `series.series_id`              |
+| `bookmark`           | `last_read_chapter_id`| `fk_bookmark_chapter`          | `chapter.chapter_id`            |
+| `bookmark`           | `page_id`            | `fk_bookmark_page`              | `page.page_id`                  |
+| `chapter_like`       | `user_id`            | `fk_chapter_like_user`          | `users.user_id`                 |
+| `chapter_like`       | `chapter_id`         | `fk_chapter_like_chapter`       | `chapter.chapter_id`            |
+| `view_log`           | `chapter_id`         | `fk_view_log_chapter`           | `chapter.chapter_id`            |
+| `comment`            | `user_id`            | `fk_comment_user`               | `users.user_id`                 |
+| `comment`            | `chapter_id`         | `fk_comment_chapter`            | `chapter.chapter_id`            |
+| `comment`            | `parent_comment_id`  | `fk_comment_parent`             | `comment.comment_id`            |
 
 When a table has multiple FKs to `users`, join with constraint names to avoid ambiguity:
 

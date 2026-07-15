@@ -9,7 +9,7 @@ const USER_ROLES = [
   "reader",
 ];
 // Roles allowed to self-register (excludes privileged roles assigned by admin)
-const SELF_REGISTER_ROLES = ["mangaka", "assistant"];
+const SELF_REGISTER_ROLES = ["mangaka", "assistant", "editor", "board"];
 
 const SERIES_STATUS = [
   "draft",

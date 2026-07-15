@@ -89,6 +89,7 @@ router.get('/', authenticateToken, controller.listRegions);
  *       200: { description: Deleted }
  */
 router.get('/:regionId', authenticateToken, validate(v.regionIdParamSchema), controller.getRegionById);
+router.post('/bulk', authenticateToken, requireRole(['admin', 'mangaka', 'editor']), validate(v.bulkCreateRegionSchema), controller.bulkCreateRegions);
 router.post('/', authenticateToken, requireRole(['admin', 'mangaka', 'editor']), validate(v.createRegionSchema), controller.createRegion);
 router.patch('/:regionId', authenticateToken, requireRole(['admin', 'mangaka', 'editor']), validate(v.updateRegionSchema), controller.updateRegion);
 router.delete('/:regionId', authenticateToken, requireRole(['admin', 'mangaka']), validate(v.regionIdParamSchema), controller.deleteRegion);

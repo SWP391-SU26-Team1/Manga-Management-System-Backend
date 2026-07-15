@@ -30,14 +30,20 @@ const runPanelDetectionJob = async (suggestionId, imageUrl, customPrompt, custom
   }
 };
 
-const runSmartColoringJob = async (suggestionId, imageUrl, customPrompt, customModel) => {
+const runSmartColoringJob = async (suggestionId, imageUrl, customPrompt, customModel, taskContent) => {
   const startTime = Date.now();
   try {
-    const prompt = getSmartColoringPrompt(customPrompt);
+    // 1. Expand the prompt using Groq LLM
+    console.log(`[AI Service] Expanding prompt. Custom Prompt: "${customPrompt || ''}", Task Content: "${taskContent || ''}"`);
+    const expandedPrompt = await groqProvider.expandColoringPrompt(customPrompt, taskContent);
+    const prompt = getSmartColoringPrompt(expandedPrompt);
+
+    // 2. Generate coloring
     const imageBuffer = await hfProvider.generateColoring(imageUrl, prompt);
     const uploadResult = await cloudinaryProvider.uploadAIImage(imageBuffer, 'manga-ai-suggestions');
     const processingTimeMs = Date.now() - startTime;
 
+    // 3. Save completed job and update the prompt to the expanded prompt
     await aiRepo.updateCompleted(suggestionId, {
       resultData: {
         type: 'smart_coloring',
@@ -46,6 +52,7 @@ const runSmartColoringJob = async (suggestionId, imageUrl, customPrompt, customM
       },
       processingTimeMs,
       aiModel: customModel || process.env.HF_COLORING_MODEL || 'black-forest-labs/FLUX.1-schnell',
+      prompt: expandedPrompt,
     });
   } catch (err) {
     const processingTimeMs = Date.now() - startTime;
@@ -131,7 +138,7 @@ const createSmartColoring = async (taskId, userId, userRole, { prompt, ai_model,
   });
 
   // Trigger background job asynchronously (non-blocking)
-  runSmartColoringJob(suggestion.suggestion_id, imageUrl, prompt, ai_model).catch((err) => {
+  runSmartColoringJob(suggestion.suggestion_id, imageUrl, prompt, ai_model, task.content).catch((err) => {
     console.error('❌ Unhandled error in runSmartColoringJob:', err);
   });
 

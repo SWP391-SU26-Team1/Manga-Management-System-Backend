@@ -6,7 +6,7 @@ const { validate } = require('../../middlewares/validate.middleware');
 const v = require('./users.validation');
 const controller = require('./users.controller');
 
-router.get('/', authenticateToken, requireRole(['admin']), validate(v.listUsersSchema), controller.listUsers);
+router.get('/', authenticateToken, requireRole(['admin', 'mangaka']), validate(v.listUsersSchema), controller.listUsers);
 router.get('/:userId', authenticateToken, validate(v.userIdParamSchema), controller.getUserById);
 router.post('/', authenticateToken, requireRole(['admin']), validate(v.createUserSchema), controller.createUser);
 router.patch('/:userId', authenticateToken, validate(v.updateUserSchema), controller.updateUser);
