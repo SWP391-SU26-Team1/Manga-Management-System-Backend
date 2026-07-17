@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 ﻿const { z } = require("zod");
+=======
+const { z } = require("zod");
+>>>>>>> 15bf055 (Add Register by OTP)
 const { SELF_REGISTER_ROLES } = require("../../constants/status");
 
 const registerSchema = z.object({
@@ -70,12 +74,26 @@ const changePasswordSchema = z.object({
   }),
 });
 
+<<<<<<< HEAD
+=======
+const verifyRegisterOtpSchema = z.object({
+  body: z.object({
+    email: z.string().email(),
+    otp: z.string().regex(/^\d{6}$/),
+  }),
+});
+
+>>>>>>> 15bf055 (Add Register by OTP)
 module.exports = {
   registerSchema,
   loginSchema,
   loginGoogleSchema,
   forgotPasswordSchema,
   verifyPasswordOtpSchema,
+<<<<<<< HEAD
+=======
+  verifyRegisterOtpSchema,
+>>>>>>> 15bf055 (Add Register by OTP)
   resetPasswordSchema,
   changePasswordSchema,
 };

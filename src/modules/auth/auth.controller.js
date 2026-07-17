@@ -116,6 +116,19 @@ const resetPassword = async (req, res, next) => {
   }
 };
 
+<<<<<<< HEAD
+=======
+const verifyRegisterOtp = async (req, res, next) => {
+  try {
+    const { email, otp } = req.body;
+    const data = await authService.verifyRegisterOtp(email, otp);
+    return sendSuccess(res, 200, data, "OTP verified successfully. Registration complete");
+  } catch (error) {
+    next(error);
+  }
+};
+
+>>>>>>> 15bf055 (Add Register by OTP)
 const resendRegisterOtp = async (req, res, next) => {
   try {
     await authService.resendRegisterOtp(req.body.email);
@@ -127,6 +140,11 @@ const resendRegisterOtp = async (req, res, next) => {
 
 module.exports = {
   register,
+<<<<<<< HEAD
+=======
+  verifyRegisterOtp,
+  resendRegisterOtp,
+>>>>>>> 15bf055 (Add Register by OTP)
   login,
   loginWithGoogle,
   logout,

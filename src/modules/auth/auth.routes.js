@@ -158,6 +158,14 @@ router.post(
   controller.resetPassword,
 );
 router.post(
+<<<<<<< HEAD
+=======
+  "/verify-register-otp",
+  validate(v.verifyRegisterOtpSchema),
+  controller.verifyRegisterOtp,
+);
+router.post(
+>>>>>>> 15bf055 (Add Register by OTP)
   "/resend-register-otp",
   validate(v.forgotPasswordSchema), // Sử dụng schema kiểm tra email có sẵn
   controller.resendRegisterOtp,

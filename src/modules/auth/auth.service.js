@@ -14,13 +14,21 @@ const googleClient = GOOGLE_CLIENT_ID
   : null;
 
 const passwordResetOtpStore = new Map();
+<<<<<<< HEAD
+=======
+const registerOtpStore = new Map();
+>>>>>>> 15bf055 (Add Register by OTP)
 
 const generatePasswordOtp = () =>
   String(Math.floor(100000 + Math.random() * 900000));
 
 const normalizeEmail = (email) => email.trim().toLowerCase();
 
+<<<<<<< HEAD
 const sendOtpEmail = async (email, otp) => {
+=======
+const sendOtpEmail = async (email, otp, type = "reset") => {
+>>>>>>> 15bf055 (Add Register by OTP)
   const smtpHost = process.env.EMAIL_HOST || "smtp.gmail.com";
   const smtpPort = Number(process.env.EMAIL_PORT || 587);
   const smtpSecure =
@@ -83,6 +91,17 @@ const sendOtpEmail = async (email, otp) => {
     auth: { user: smtpUser, pass: smtpPass },
   });
 
+<<<<<<< HEAD
+=======
+  const subject = type === "register"
+    ? "MangaFlow - Mã OTP xác thực đăng ký tài khoản"
+    : "MangaFlow - Mã OTP khôi phục mật khẩu";
+
+  const text = type === "register"
+    ? `Mã OTP xác thực đăng ký tài khoản MangaFlow của bạn là ${otp}. Mã này sẽ hết hạn trong vòng 10 phút.`
+    : `Mã OTP khôi phục mật khẩu tài khoản MangaFlow của bạn là ${otp}. Mã này sẽ hết hạn trong vòng 10 phút.`;
+
+>>>>>>> 15bf055 (Add Register by OTP)
   try {
     if (isDevMode && recipient !== email) {
       console.info(
@@ -92,8 +111,13 @@ const sendOtpEmail = async (email, otp) => {
     await transporter.sendMail({
       from: process.env.EMAIL_FROM || smtpUser,
       to: recipient,
+<<<<<<< HEAD
       subject: "Manga Management password reset OTP",
       text: `Your password reset OTP is ${otp}. It will expire in 10 minutes.`,
+=======
+      subject,
+      text,
+>>>>>>> 15bf055 (Add Register by OTP)
     });
   } catch (error) {
     if (isDevMode) {
@@ -178,13 +202,19 @@ const checkUserStatus = (user) => {
 };
 
 const register = async ({ username, email, password, name, role }) => {
+<<<<<<< HEAD
   const existingEmail = await usersRepo.findByEmail(email);
+=======
+  const normalizedEmail = normalizeEmail(email);
+  const existingEmail = await usersRepo.findByEmail(normalizedEmail);
+>>>>>>> 15bf055 (Add Register by OTP)
   if (existingEmail) throw new AppError("Email already in use", 409);
 
   const existingUsername = await usersRepo.findByUsername(username);
   if (existingUsername) throw new AppError("Username already in use", 409);
 
   const hashed = await bcrypt.hash(password, 10);
+<<<<<<< HEAD
   const user = await usersRepo.create({
     username,
     email,
@@ -193,10 +223,100 @@ const register = async ({ username, email, password, name, role }) => {
     role,
     status: "active",
   });
+=======
+  const otp = generatePasswordOtp();
+  registerOtpStore.set(normalizedEmail, {
+    otp,
+    expiresAt: Date.now() + 10 * 60 * 1000,
+    payload: { username, email: normalizedEmail, password: hashed, name, role },
+  });
+
+  await sendOtpEmail(normalizedEmail, otp, "register");
+  return { otpSent: true, email: normalizedEmail };
+};
+
+const verifyRegisterOtp = async (email, otp) => {
+  const normalizedEmail = normalizeEmail(email);
+  const entry = registerOtpStore.get(normalizedEmail);
+
+  if (!entry || entry.otp !== otp) {
+    throw new AppError("Invalid or expired OTP", 400);
+  }
+
+  if (entry.expiresAt < Date.now()) {
+    registerOtpStore.delete(normalizedEmail);
+    throw new AppError("OTP has expired. Please register again", 400);
+  }
+
+  const existingEmail = await usersRepo.findByEmail(normalizedEmail);
+  if (existingEmail) throw new AppError("Email already in use", 409);
+
+  let user;
+  if (entry.payload.isGoogle) {
+    const { googleId, name, avatar_url, role } = entry.payload;
+
+    const baseUsername = normalizedEmail.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "") || "googleuser";
+    let finalUsername = baseUsername;
+    let suffix = 1;
+    while (await usersRepo.findByUsername(finalUsername)) {
+      finalUsername = `${baseUsername}_${suffix}`;
+      suffix += 1;
+    }
+
+    const randomPassword = crypto.randomBytes(32).toString("hex");
+    const hashedPassword = await bcrypt.hash(randomPassword, 10);
+
+    user = await usersRepo.create({
+      email: normalizedEmail,
+      username: finalUsername,
+      password: hashedPassword,
+      name,
+      avatar_url,
+      role,
+      status: "active",
+    });
+  } else {
+    const { username, password, name, role } = entry.payload;
+    const existingUsername = await usersRepo.findByUsername(username);
+    if (existingUsername) throw new AppError("Username already in use", 409);
+
+    user = await usersRepo.create({
+      username,
+      email: normalizedEmail,
+      password,
+      name,
+      role,
+      status: "active",
+    });
+  }
+
+  registerOtpStore.delete(normalizedEmail);
+
+>>>>>>> 15bf055 (Add Register by OTP)
   const token = signToken(user);
   return { token, user };
 };
 
+<<<<<<< HEAD
+=======
+const resendRegisterOtp = async (email) => {
+  const normalizedEmail = normalizeEmail(email);
+  const entry = registerOtpStore.get(normalizedEmail);
+
+  if (!entry) {
+    throw new AppError("No registration in progress for this email", 400);
+  }
+
+  const otp = generatePasswordOtp();
+  entry.otp = otp;
+  entry.expiresAt = Date.now() + 10 * 60 * 1000;
+  registerOtpStore.set(normalizedEmail, entry);
+
+  await sendOtpEmail(normalizedEmail, otp, "register");
+};
+
+
+>>>>>>> 15bf055 (Add Register by OTP)
 // Đăng nhập bằng Email - Kiểm tra mật khẩu trước, sau đó mới kiểm tra trạng thái
 const login = async ({ email, password }) => {
   // Bước 1: Tìm user trong database theo email.
@@ -222,6 +342,7 @@ const login = async ({ email, password }) => {
   return { token, user: safeUser };
 };
 
+<<<<<<< HEAD
 // Đăng nhập bằng Google
 const loginWithGoogle = async ({ email, googleId, name, avatar_url }) => {
   let user = await usersRepo.findByEmail(email);
@@ -243,6 +364,13 @@ const loginWithGoogle = async ({ email, googleId, name, avatar_url }) => {
 
     // Support preset emails from environment variable (comma-separated)
     // Example: PRESET_EMAILS=minhphuc242004@gmail.com,alice@example.com
+=======
+const loginWithGoogle = async ({ email, googleId, name, avatar_url }) => {
+  let user = await usersRepo.findByEmail(email);
+
+  if (!user) {
+    // Support preset emails from environment variable (comma-separated)
+>>>>>>> 15bf055 (Add Register by OTP)
     const presetEmails = (process.env.PRESET_EMAILS || "")
       .split(",")
       .map((e) => e.trim().toLowerCase())
@@ -250,6 +378,7 @@ const loginWithGoogle = async ({ email, googleId, name, avatar_url }) => {
     const presetRole = process.env.PRESET_EMAIL_ROLE || "admin";
     const roleToAssign = presetEmails.includes(email.toLowerCase())
       ? presetRole
+<<<<<<< HEAD
       : "reader";
 
     user = await usersRepo.create({
@@ -261,6 +390,27 @@ const loginWithGoogle = async ({ email, googleId, name, avatar_url }) => {
       role: roleToAssign,
       status: "active",
     });
+=======
+      : "mangaka";
+
+    const normalizedEmail = normalizeEmail(email);
+    const otp = generatePasswordOtp();
+    registerOtpStore.set(normalizedEmail, {
+      otp,
+      expiresAt: Date.now() + 10 * 60 * 1000,
+      payload: {
+        isGoogle: true,
+        email: normalizedEmail,
+        googleId,
+        name,
+        avatar_url,
+        role: roleToAssign,
+      },
+    });
+
+    await sendOtpEmail(normalizedEmail, otp, "register");
+    return { otpSent: true, email: normalizedEmail };
+>>>>>>> 15bf055 (Add Register by OTP)
   }
 
   // PHẢI KIỂM TRA TRẠNG THÁI - Điều này không được bỏ qua dù là Google hay Email
@@ -359,6 +509,7 @@ const changePassword = async (userId, { old_password, new_password }) => {
   await usersRepo.update(userId, { password: hashed });
 };
 
+<<<<<<< HEAD
 const resendRegisterOtp = async (email) => {
   const normalizedEmail = normalizeEmail(email);
   const entry = registerOtpStore.get(normalizedEmail);
@@ -374,6 +525,12 @@ const resendRegisterOtp = async (email) => {
 
 module.exports = {
   register,
+=======
+module.exports = {
+  register,
+  verifyRegisterOtp,
+  resendRegisterOtp,
+>>>>>>> 15bf055 (Add Register by OTP)
   login,
   loginWithGoogle,
   getMe,
