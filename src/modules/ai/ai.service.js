@@ -39,7 +39,7 @@ const runSmartColoringJob = async (suggestionId, imageUrl, customPrompt, customM
     const prompt = getSmartColoringPrompt(expandedPrompt);
 
     // 2. Generate coloring
-    const imageBuffer = await hfProvider.generateColoring(imageUrl, prompt);
+    const imageBuffer = await hfProvider.generateColoring(imageUrl, prompt, customModel);
     const uploadResult = await cloudinaryProvider.uploadAIImage(imageBuffer, 'manga-ai-suggestions');
     const processingTimeMs = Date.now() - startTime;
 
@@ -134,7 +134,7 @@ const createSmartColoring = async (taskId, userId, userRole, { prompt, ai_model,
     status: 'processing',
     prompt: prompt || getSmartColoringPrompt(),
     reference_image_url: imageUrl,
-    ai_model: ai_model || process.env.HF_COLORING_MODEL || 'black-forest-labs/FLUX.1-schnell',
+    ai_model: ai_model || process.env.HF_COLORING_MODEL || 'stabilityai/stable-diffusion-3-medium-diffusers',
   });
 
   // Trigger background job asynchronously (non-blocking)
