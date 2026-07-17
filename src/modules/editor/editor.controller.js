@@ -11,6 +11,7 @@ const editorAlertsSvc = require("./editorAlerts.service");
 const editorReportsSvc = require("./editorReports.service");
 const editorProposalsSvc = require("./editorProposals.service");
 const editorTeamSvc = require("./editorTeam.service");
+const { createNotifications } = require("../../utils/notification.helper");
 const { sendSuccess } = require("../../utils/response");
 const {
   parsePagination,
@@ -95,10 +96,58 @@ const updateSeries = async (req, res, next) => {
 
 const updateSeriesStatus = async (req, res, next) => {
   try {
+    const currentSeries = await seriesRepo.findById(req.params.seriesId);
+    if (!currentSeries) return next(new AppError("Series not found", 404));
+    // Kiểm tra xem editor có phải là người phụ trách series này hay không
+    if (req.user && req.user.role === 'editor') {
+      const isAlreadyAssigned = ['approved', 'published', 'in_production', 'hidden', 'archived'].includes(currentSeries.status);
+      if (isAlreadyAssigned) {
+        const { data: membership } = await supabase
+          .from('series_member')
+          .select('role_in_series')
+          .eq('series_id', req.params.seriesId)
+          .eq('user_id', req.user.user_id)
+          .maybeSingle();
+        if (!membership || membership.role_in_series !== 'editor') {
+          return next(new AppError("Access denied: you are not the assigned Tantou editor for this series", 403));
+        }
+      }
+    }
     const data = await seriesRepo.update(req.params.seriesId, {
       status: req.body.status,
       updated_at: new Date().toISOString(),
     });
+    // Gửi thông báo đến chủ sở hữu Series (Mangaka)
+    try {
+      const members = await seriesMembersRepo.findBySeriesId(req.params.seriesId);
+      const owners = (members || []).filter(m => m.role_in_series === 'owner');
+      if (owners.length > 0) {
+        let title = '';
+        let content = '';
+        let type = '';
+        if (req.body.status === 'approved') {
+          title = 'Series của bạn đã được phê duyệt';
+          content = `Tác phẩm "${data.title}" đã được duyệt bởi Tantou Editor và chuyển sang trạng thái Đang vẽ.`;
+          type = 'series_approved';
+        } else if (req.body.status === 'rejected' || req.body.status === 'draft') {
+          title = 'Series của bạn cần chỉnh sửa';
+          content = `Tác phẩm "${data.title}" đã bị từ chối duyệt hoặc yêu cầu chỉnh sửa hồ sơ.`;
+          type = 'series_rejected';
+        }
+        
+        if (title) {
+          const notifications = owners.map(o => ({
+            userId: o.user_id,
+            title,
+            content,
+            type
+          }));
+          await createNotifications(notifications);
+        }
+      }
+    } catch (err) {
+      console.error('[Notification Error] Failed to notify series owner on status update:', err);
+    }
     return sendSuccess(res, 200, data, "Status updated");
   } catch (e) {
     next(e);
@@ -107,6 +156,22 @@ const updateSeriesStatus = async (req, res, next) => {
 
 const seriesWorkflow = (status) => async (req, res, next) => {
   try {
+    const currentSeries = await seriesRepo.findById(req.params.seriesId);
+    if (!currentSeries) return next(new AppError("Series not found", 404));
+    if (req.user && req.user.role === 'editor') {
+      const isAlreadyAssigned = ['approved', 'published', 'in_production', 'hidden', 'archived'].includes(currentSeries.status);
+      if (isAlreadyAssigned) {
+        const { data: membership } = await supabase
+          .from('series_member')
+          .select('role_in_series')
+          .eq('series_id', req.params.seriesId)
+          .eq('user_id', req.user.user_id)
+          .maybeSingle();
+        if (!membership || membership.role_in_series !== 'editor') {
+          return next(new AppError("Access denied: you are not the assigned Tantou editor for this series", 403));
+        }
+      }
+    }
     const data = await seriesRepo.update(req.params.seriesId, {
       status,
       updated_at: new Date().toISOString(),
