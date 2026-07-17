@@ -1,1 +1,2 @@
-// Empty setup file for Jest
+// Setup file for Jest
+require('dotenv').config();
