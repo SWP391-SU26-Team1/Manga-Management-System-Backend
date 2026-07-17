@@ -34,6 +34,7 @@ const bookmarksRoutes = require("./modules/bookmarks/bookmarks.routes");
 const chapterLikesRoutes = require("./modules/chapterLikes/chapterLikes.routes");
 const commentsRoutes = require("./modules/comments/comments.routes");
 const viewLogsRoutes = require("./modules/viewLogs/viewLogs.routes");
+const pageTaskDraftRoutes = require("./modules/pageTaskDraft/pageTaskDraft.routes");
 // Role-specific routes
 const mangakaRoutes = require("./modules/mangaka/mangaka.routes");
 const assistantRoutes = require("./modules/assistant/assistant.routes");
@@ -113,6 +114,7 @@ app.use("/api/page-tasks", pageTasksRoutes);
 app.use("/api/page-tasks/:taskId/feedbacks", pageTaskFeedbacksRoutes);
 app.use("/api/page-tasks/:taskId/annotations", annotationsRoutes);
 app.use("/api/page-tasks/:taskId/ai", aiRoutes);
+app.use("/api/page-tasks/:taskId/draft", pageTaskDraftRoutes);
 
 // Assistants tasks
 app.use("/api/assistants/:assistantId/tasks", pageTasksRoutes);

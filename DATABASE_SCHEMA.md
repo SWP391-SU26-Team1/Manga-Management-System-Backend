@@ -624,6 +624,26 @@ Status values: `active`, `hidden`, `deleted`, `flagged`
 
 Indexes: `idx_comment_chapter_id`, `idx_comment_parent_id`
 
+### page_task_draft
+
+Primary key: `draft_id`
+
+Columns:
+
+| Column | Type | Required | Default | Notes |
+| --- | --- | --- | --- | --- |
+| `draft_id` | UUID | yes | `gen_random_uuid()` | PK |
+| `task_id` | UUID | yes | | FK to `page_task.task_id`, cascade delete |
+| `user_id` | UUID | yes | | FK to `users.user_id`, cascade delete |
+| `image_url` | TEXT | no | | |
+| `canvas_state` | JSONB | no | | Save vector/layers data of Canvas |
+| `created_at` | TIMESTAMPTZ | no | `now()` | |
+| `updated_at` | TIMESTAMPTZ | no | `now()` | update trigger |
+
+Unique constraints: `UNIQUE (task_id, user_id)`
+
+Indexes: `idx_page_task_draft_task_id`, `idx_page_task_draft_user_id`
+
 ## Status Constants
 
 When implementing validation, mirror these in `src/constants/status.js`.
@@ -724,7 +744,7 @@ const PAGE_AI_SUGGESTION_STATUS = [
 
 ## Supabase Relationship Notes
 
-Use table names exactly as defined: `users`, `notification`, `series`, `series_member`, `chapter`, `page`, `page_region`, `page_task`, `page_version`, `page_submission`, `page_task_feedback`, `annotation`, `review_session`, `vote`, `ranking_period`, `series_ranking`, `chapter_ranking`, `manuscript`, `manuscript_file`, `page_ai_suggestion`, `bookmark`, `chapter_like`, `view_log`, `comment`.
+Use table names exactly as defined: `users`, `notification`, `series`, `series_member`, `chapter`, `page`, `page_region`, `page_task`, `page_version`, `page_submission`, `page_task_feedback`, `annotation`, `review_session`, `vote`, `ranking_period`, `series_ranking`, `chapter_ranking`, `manuscript`, `manuscript_file`, `page_ai_suggestion`, `bookmark`, `chapter_like`, `view_log`, `comment`, `page_task_draft`.
 
 Important foreign key constraint names for joined selects:
 
@@ -779,6 +799,8 @@ Important foreign key constraint names for joined selects:
 | `comment`            | `user_id`            | `fk_comment_user`               | `users.user_id`                 |
 | `comment`            | `chapter_id`         | `fk_comment_chapter`            | `chapter.chapter_id`            |
 | `comment`            | `parent_comment_id`  | `fk_comment_parent`             | `comment.comment_id`            |
+| `page_task_draft`    | `task_id`            | `fk_page_task_draft_task`       | `page_task.task_id`             |
+| `page_task_draft`    | `user_id`            | `fk_page_task_draft_user`       | `users.user_id`                 |
 
 When a table has multiple FKs to `users`, join with constraint names to avoid ambiguity:
 
