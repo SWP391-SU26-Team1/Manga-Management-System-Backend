@@ -438,19 +438,6 @@ const changePassword = async (userId, { old_password, new_password }) => {
   await usersRepo.update(userId, { password: hashed });
 };
 
-const resendRegisterOtp = async (email) => {
-  const normalizedEmail = normalizeEmail(email);
-  const entry = registerOtpStore.get(normalizedEmail);
-  if (!entry) {
-    throw new AppError("No registration in progress for this email", 400);
-  }
-  const otp = generatePasswordOtp();
-  entry.otp = otp;
-  entry.expiresAt = Date.now() + 10 * 60 * 1000;
-  registerOtpStore.set(normalizedEmail, entry);
-  await sendOtpEmail(normalizedEmail, otp, "register");
-};
-
 module.exports = {
   register,
   verifyRegisterOtp,
