@@ -50,17 +50,23 @@ const sendOtpEmail = async (email, otp, type = "reset") => {
   };
 
   const isConfigMissing =
-    !smtpUser || !smtpPass || isPlaceholder(smtpUser) || isPlaceholder(smtpPass);
+    !smtpUser ||
+    !smtpPass ||
+    isPlaceholder(smtpUser) ||
+    isPlaceholder(smtpPass);
 
   const devEmail = process.env.EMAIL_TO_DEV;
   const isDevMode = process.env.NODE_ENV !== "production";
-  const recipient = (isDevMode && devEmail && !isPlaceholder(devEmail)) ? devEmail : email;
+  const recipient =
+    isDevMode && devEmail && !isPlaceholder(devEmail) ? devEmail : email;
 
   if (isConfigMissing) {
     if (process.env.NODE_ENV === "production") {
       throw new AppError("Email service is not configured", 500);
     }
-    console.info(`[Local Test] SMTP credentials missing or placeholder; OTP for ${recipient}: ${otp}`);
+    console.info(
+      `[Local Test] SMTP credentials missing or placeholder; OTP for ${recipient}: ${otp}`,
+    );
     return;
   }
 
@@ -88,7 +94,9 @@ const sendOtpEmail = async (email, otp, type = "reset") => {
 
   try {
     if (isDevMode && recipient !== email) {
-      console.info(`[Local Test] Redirecting OTP email from ${email} to developer test email: ${recipient}`);
+      console.info(
+        `[Local Test] Redirecting OTP email from ${email} to developer test email: ${recipient}`,
+      );
     }
     await transporter.sendMail({
       from: process.env.EMAIL_FROM || smtpUser,
@@ -99,7 +107,7 @@ const sendOtpEmail = async (email, otp, type = "reset") => {
   } catch (error) {
     if (isDevMode) {
       console.warn(
-        `[Local Test] Failed to send actual email via SMTP to ${recipient}, falling back to console log. Error: ${error.message}`
+        `[Local Test] Failed to send actual email via SMTP to ${recipient}, falling back to console log. Error: ${error.message}`,
       );
       console.info(`[Local Test] OTP for ${recipient}: ${otp}`);
       return;
@@ -428,6 +436,19 @@ const changePassword = async (userId, { old_password, new_password }) => {
 
   const hashed = await bcrypt.hash(new_password, 10);
   await usersRepo.update(userId, { password: hashed });
+};
+
+const resendRegisterOtp = async (email) => {
+  const normalizedEmail = normalizeEmail(email);
+  const entry = registerOtpStore.get(normalizedEmail);
+  if (!entry) {
+    throw new AppError("No registration in progress for this email", 400);
+  }
+  const otp = generatePasswordOtp();
+  entry.otp = otp;
+  entry.expiresAt = Date.now() + 10 * 60 * 1000;
+  registerOtpStore.set(normalizedEmail, entry);
+  await sendOtpEmail(normalizedEmail, otp, "register");
 };
 
 module.exports = {

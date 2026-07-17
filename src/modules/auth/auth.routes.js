@@ -164,7 +164,7 @@ router.post(
 );
 router.post(
   "/resend-register-otp",
-  validate(v.forgotPasswordSchema),
+  validate(v.forgotPasswordSchema), // Sử dụng schema kiểm tra email có sẵn
   controller.resendRegisterOtp,
 );
 

@@ -135,7 +135,6 @@ const resendRegisterOtp = async (req, res, next) => {
   }
 };
 
-
 module.exports = {
   register,
   verifyRegisterOtp,
