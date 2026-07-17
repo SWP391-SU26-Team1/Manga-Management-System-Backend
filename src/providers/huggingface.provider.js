@@ -1,12 +1,14 @@
 const AppError = require('../utils/appError');
 
 const HF_API_KEY = process.env.HF_API_KEY;
-const HF_COLORING_MODEL = process.env.HF_COLORING_MODEL || 'black-forest-labs/FLUX.1-schnell';
+const DEFAULT_MODEL = process.env.HF_COLORING_MODEL || 'stabilityai/stable-diffusion-3-medium-diffusers';
 
-const generateColoring = async (imageUrl, prompt) => {
+const generateColoring = async (imageUrl, prompt, modelName) => {
   if (!HF_API_KEY) {
     throw new AppError('HuggingFace API is not configured on the server (missing HF_API_KEY)', 500);
   }
+
+  const activeModel = modelName || DEFAULT_MODEL;
 
   try {
     // 1. Fetch reference image to pass as input buffer/data if needed
@@ -19,14 +21,14 @@ const generateColoring = async (imageUrl, prompt) => {
     console.log(`[HF Provider] Image downloaded successfully, size: ${imageBuffer.byteLength} bytes`);
 
     // 2. Call HuggingFace Inference API
-    const hfUrl = `https://router.huggingface.co/hf-inference/models/${HF_COLORING_MODEL}`;
+    const hfUrl = `https://router.huggingface.co/hf-inference/models/${activeModel}`;
     console.log(`[HF Provider] Sending request to Hugging Face URL: ${hfUrl}`);
     
-    const isFlux = HF_COLORING_MODEL.toLowerCase().includes('flux');
+    const isTextToImage = activeModel.toLowerCase().includes('flux') || activeModel.toLowerCase().includes('stable-diffusion');
     let requestPayload;
 
-    if (isFlux) {
-      console.log(`[HF Provider] FLUX model detected. Sending text-to-image prompt without input image.`);
+    if (isTextToImage) {
+      console.log(`[HF Provider] Text-to-image model detected. Sending text-to-image prompt without input image.`);
       requestPayload = {
         inputs: prompt
       };
