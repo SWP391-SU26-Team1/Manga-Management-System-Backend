@@ -116,8 +116,30 @@ const resetPassword = async (req, res, next) => {
   }
 };
 
+const verifyRegisterOtp = async (req, res, next) => {
+  try {
+    const { email, otp } = req.body;
+    const data = await authService.verifyRegisterOtp(email, otp);
+    return sendSuccess(res, 200, data, "OTP verified successfully. Registration complete");
+  } catch (error) {
+    next(error);
+  }
+};
+
+const resendRegisterOtp = async (req, res, next) => {
+  try {
+    await authService.resendRegisterOtp(req.body.email);
+    return sendSuccess(res, 200, null, "Registration OTP has been resent");
+  } catch (error) {
+    next(error);
+  }
+};
+
+
 module.exports = {
   register,
+  verifyRegisterOtp,
+  resendRegisterOtp,
   login,
   loginWithGoogle,
   logout,

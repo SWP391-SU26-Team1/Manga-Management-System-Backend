@@ -157,5 +157,15 @@ router.post(
   validate(v.resetPasswordSchema),
   controller.resetPassword,
 );
+router.post(
+  "/verify-register-otp",
+  validate(v.verifyRegisterOtpSchema),
+  controller.verifyRegisterOtp,
+);
+router.post(
+  "/resend-register-otp",
+  validate(v.forgotPasswordSchema),
+  controller.resendRegisterOtp,
+);
 
 module.exports = router;

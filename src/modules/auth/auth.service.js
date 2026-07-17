@@ -14,13 +14,14 @@ const googleClient = GOOGLE_CLIENT_ID
   : null;
 
 const passwordResetOtpStore = new Map();
+const registerOtpStore = new Map();
 
 const generatePasswordOtp = () =>
   String(Math.floor(100000 + Math.random() * 900000));
 
 const normalizeEmail = (email) => email.trim().toLowerCase();
 
-const sendOtpEmail = async (email, otp) => {
+const sendOtpEmail = async (email, otp, type = "reset") => {
   const smtpHost = process.env.EMAIL_HOST || "smtp.gmail.com";
   const smtpPort = Number(process.env.EMAIL_PORT || 587);
   const smtpSecure =
@@ -77,6 +78,14 @@ const sendOtpEmail = async (email, otp) => {
     auth: { user: smtpUser, pass: smtpPass },
   });
 
+  const subject = type === "register"
+    ? "MangaFlow - Mã OTP xác thực đăng ký tài khoản"
+    : "MangaFlow - Mã OTP khôi phục mật khẩu";
+
+  const text = type === "register"
+    ? `Mã OTP xác thực đăng ký tài khoản MangaFlow của bạn là ${otp}. Mã này sẽ hết hạn trong vòng 10 phút.`
+    : `Mã OTP khôi phục mật khẩu tài khoản MangaFlow của bạn là ${otp}. Mã này sẽ hết hạn trong vòng 10 phút.`;
+
   try {
     if (isDevMode && recipient !== email) {
       console.info(`[Local Test] Redirecting OTP email from ${email} to developer test email: ${recipient}`);
@@ -84,8 +93,8 @@ const sendOtpEmail = async (email, otp) => {
     await transporter.sendMail({
       from: process.env.EMAIL_FROM || smtpUser,
       to: recipient,
-      subject: "Manga Management password reset OTP",
-      text: `Your password reset OTP is ${otp}. It will expire in 10 minutes.`,
+      subject,
+      text,
     });
   } catch (error) {
     if (isDevMode) {
@@ -170,24 +179,102 @@ const checkUserStatus = (user) => {
 };
 
 const register = async ({ username, email, password, name, role }) => {
-  const existingEmail = await usersRepo.findByEmail(email);
+  const normalizedEmail = normalizeEmail(email);
+  const existingEmail = await usersRepo.findByEmail(normalizedEmail);
   if (existingEmail) throw new AppError("Email already in use", 409);
 
   const existingUsername = await usersRepo.findByUsername(username);
   if (existingUsername) throw new AppError("Username already in use", 409);
 
   const hashed = await bcrypt.hash(password, 10);
-  const user = await usersRepo.create({
-    username,
-    email,
-    password: hashed,
-    name,
-    role,
-    status: "active",
+  const otp = generatePasswordOtp();
+  registerOtpStore.set(normalizedEmail, {
+    otp,
+    expiresAt: Date.now() + 10 * 60 * 1000,
+    payload: { username, email: normalizedEmail, password: hashed, name, role },
   });
+
+  await sendOtpEmail(normalizedEmail, otp, "register");
+  return { otpSent: true, email: normalizedEmail };
+};
+
+const verifyRegisterOtp = async (email, otp) => {
+  const normalizedEmail = normalizeEmail(email);
+  const entry = registerOtpStore.get(normalizedEmail);
+
+  if (!entry || entry.otp !== otp) {
+    throw new AppError("Invalid or expired OTP", 400);
+  }
+
+  if (entry.expiresAt < Date.now()) {
+    registerOtpStore.delete(normalizedEmail);
+    throw new AppError("OTP has expired. Please register again", 400);
+  }
+
+  const existingEmail = await usersRepo.findByEmail(normalizedEmail);
+  if (existingEmail) throw new AppError("Email already in use", 409);
+
+  let user;
+  if (entry.payload.isGoogle) {
+    const { googleId, name, avatar_url, role } = entry.payload;
+
+    const baseUsername = normalizedEmail.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "") || "googleuser";
+    let finalUsername = baseUsername;
+    let suffix = 1;
+    while (await usersRepo.findByUsername(finalUsername)) {
+      finalUsername = `${baseUsername}_${suffix}`;
+      suffix += 1;
+    }
+
+    const randomPassword = crypto.randomBytes(32).toString("hex");
+    const hashedPassword = await bcrypt.hash(randomPassword, 10);
+
+    user = await usersRepo.create({
+      email: normalizedEmail,
+      username: finalUsername,
+      password: hashedPassword,
+      name,
+      avatar_url,
+      role,
+      status: "active",
+    });
+  } else {
+    const { username, password, name, role } = entry.payload;
+    const existingUsername = await usersRepo.findByUsername(username);
+    if (existingUsername) throw new AppError("Username already in use", 409);
+
+    user = await usersRepo.create({
+      username,
+      email: normalizedEmail,
+      password,
+      name,
+      role,
+      status: "active",
+    });
+  }
+
+  registerOtpStore.delete(normalizedEmail);
+
   const token = signToken(user);
   return { token, user };
 };
+
+const resendRegisterOtp = async (email) => {
+  const normalizedEmail = normalizeEmail(email);
+  const entry = registerOtpStore.get(normalizedEmail);
+
+  if (!entry) {
+    throw new AppError("No registration in progress for this email", 400);
+  }
+
+  const otp = generatePasswordOtp();
+  entry.otp = otp;
+  entry.expiresAt = Date.now() + 10 * 60 * 1000;
+  registerOtpStore.set(normalizedEmail, entry);
+
+  await sendOtpEmail(normalizedEmail, otp, "register");
+};
+
 
 // Đăng nhập bằng Email - Kiểm tra mật khẩu trước, sau đó mới kiểm tra trạng thái
 const login = async ({ email, password }) => {
@@ -214,27 +301,11 @@ const login = async ({ email, password }) => {
   return { token, user: safeUser };
 };
 
-// Đăng nhập bằng Google
 const loginWithGoogle = async ({ email, googleId, name, avatar_url }) => {
   let user = await usersRepo.findByEmail(email);
 
-  // Nếu chưa có tài khoản -> Tạo mới với trạng thái active
   if (!user) {
-    const baseUsername =
-      email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "") || "googleuser";
-    let username = baseUsername;
-    let suffix = 1;
-
-    while (await usersRepo.findByUsername(username)) {
-      username = `${baseUsername}_${suffix}`;
-      suffix += 1;
-    }
-
-    const randomPassword = crypto.randomBytes(32).toString("hex");
-    const hashedPassword = await bcrypt.hash(randomPassword, 10);
-
     // Support preset emails from environment variable (comma-separated)
-    // Example: PRESET_EMAILS=minhphuc242004@gmail.com,alice@example.com
     const presetEmails = (process.env.PRESET_EMAILS || "")
       .split(",")
       .map((e) => e.trim().toLowerCase())
@@ -242,17 +313,25 @@ const loginWithGoogle = async ({ email, googleId, name, avatar_url }) => {
     const presetRole = process.env.PRESET_EMAIL_ROLE || "admin";
     const roleToAssign = presetEmails.includes(email.toLowerCase())
       ? presetRole
-      : "reader";
+      : "mangaka";
 
-    user = await usersRepo.create({
-      email,
-      username,
-      password: hashedPassword,
-      name,
-      avatar_url,
-      role: roleToAssign,
-      status: "active",
+    const normalizedEmail = normalizeEmail(email);
+    const otp = generatePasswordOtp();
+    registerOtpStore.set(normalizedEmail, {
+      otp,
+      expiresAt: Date.now() + 10 * 60 * 1000,
+      payload: {
+        isGoogle: true,
+        email: normalizedEmail,
+        googleId,
+        name,
+        avatar_url,
+        role: roleToAssign,
+      },
     });
+
+    await sendOtpEmail(normalizedEmail, otp, "register");
+    return { otpSent: true, email: normalizedEmail };
   }
 
   // PHẢI KIỂM TRA TRẠNG THÁI - Điều này không được bỏ qua dù là Google hay Email
@@ -353,6 +432,8 @@ const changePassword = async (userId, { old_password, new_password }) => {
 
 module.exports = {
   register,
+  verifyRegisterOtp,
+  resendRegisterOtp,
   login,
   loginWithGoogle,
   getMe,
