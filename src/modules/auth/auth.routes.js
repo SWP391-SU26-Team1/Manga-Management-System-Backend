@@ -157,5 +157,10 @@ router.post(
   validate(v.resetPasswordSchema),
   controller.resetPassword,
 );
+router.post(
+  "/resend-register-otp",
+  validate(v.forgotPasswordSchema), // Sử dụng schema kiểm tra email có sẵn
+  controller.resendRegisterOtp,
+);
 
 module.exports = router;

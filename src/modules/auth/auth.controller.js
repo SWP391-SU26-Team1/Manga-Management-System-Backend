@@ -116,6 +116,15 @@ const resetPassword = async (req, res, next) => {
   }
 };
 
+const resendRegisterOtp = async (req, res, next) => {
+  try {
+    await authService.resendRegisterOtp(req.body.email);
+    return sendSuccess(res, 200, null, "Registration OTP has been resent");
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   register,
   login,
