@@ -14,15 +14,27 @@ const getSeriesDetail = async (seriesId) => {
   if (!series) throw new AppError('Series not found', 404);
   
   let total_views = 0;
-  let total_likes = 0;
+  const unique_users = new Set();
 
   if (series.chapter && Array.isArray(series.chapter)) {
     series.chapter.forEach(ch => {
       total_views += (ch.view_count || 0);
-      total_likes += (ch.chapter_like ? ch.chapter_like.length : 0);
-      delete ch.chapter_like;
+
+      // Lọc 1 user = 1 like cho toàn bộ Series
+      if (ch.chapter_like && Array.isArray(ch.chapter_like)) {
+        // Gom user_id vào unique_users để tính tổng Like cho Series
+        ch.chapter_like.forEach(like => {
+          if (like.user_id) unique_users.add(like.user_id);
+        });
+
+        // THAY ĐỔI: Thay vì delete, hãy map nó thành 1 mảng user_id đơn giản
+        // để Frontend biết được user nào đã like chapter này
+        ch.chapter_like = ch.chapter_like.map(like => like.user_id).filter(Boolean);
+      }
     });
   }
+
+  const total_likes = unique_users.size;
 
   return { ...series, total_views, total_likes };
 };

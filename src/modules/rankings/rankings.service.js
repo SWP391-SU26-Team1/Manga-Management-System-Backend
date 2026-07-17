@@ -100,7 +100,7 @@ const getPeriodSummary = async (periodId) => {
 
 // --- Dynamic Board ---
 const getTopSeries = async (filters) => {
-  let query = supabase.from('series_ranking').select('*, series:series_id(title, status, genre, cover_image_url), ranking_period:period_id(name, start_date, end_date)');
+  let query = supabase.from('series_ranking').select('*, series:series_id(title, status, genre, cover_image_url, view_count), ranking_period:period_id(name, start_date, end_date)');
   if (filters.periodId) query = query.eq('period_id', filters.periodId);
   if (filters.status) query = query.eq('series.status', filters.status);
   if (filters.genre) query = query.eq('series.genre', filters.genre);
