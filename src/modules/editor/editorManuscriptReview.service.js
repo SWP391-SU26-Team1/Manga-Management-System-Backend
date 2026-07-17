@@ -5,6 +5,19 @@ const AppError = require('../../utils/appError');
 
 const listManuscripts = async (filters) => {
   let query = supabase.from('manuscript').select('*', { count: 'exact' });
+  if (filters.requestingUser && filters.requestingUser.role === 'editor') {
+    const { data: memberships } = await supabase
+      .from('series_member')
+      .select('series_id')
+      .eq('user_id', filters.requestingUser.user_id)
+      .in('role_in_series', ['editor', 'pending_editor']);
+      
+    const seriesIds = (memberships || []).map(m => m.series_id);
+    if (seriesIds.length === 0) {
+      return { data: [], total: 0 };
+    }
+    query = query.in('series_id', seriesIds);
+  }
   if (filters.status) query = query.eq('status', filters.status);
   if (filters.seriesId) query = query.eq('series_id', filters.seriesId);
   if (filters.chapterId) query = query.eq('chapter_id', filters.chapterId);

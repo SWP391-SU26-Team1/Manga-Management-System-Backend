@@ -25,6 +25,24 @@ const listSeries = async (req, res, next) => {
     const { page, limit, offset } = parsePagination(req.query);
     const { status, keyword } = req.query;
     let query = supabase.from("series").select("*", { count: "exact" });
+    if (req.user && req.user.role === 'editor' && !['pending_review', 'approved'].includes(status)) {
+      const { data: memberships } = await supabase
+        .from('series_member')
+        .select('series_id')
+        .eq('user_id', req.user.user_id)
+        .eq('role_in_series', 'editor');
+        
+      const seriesIds = (memberships || []).map(m => m.series_id);
+      if (seriesIds.length === 0) {
+        return res.status(200).json({
+          success: true,
+          message: "Success",
+          data: [],
+          pagination: buildPaginationMeta(page, limit, 0),
+        });
+      }
+      query = query.in('series_id', seriesIds);
+    }
     if (status) query = query.eq("status", status);
     if (keyword) query = query.ilike("title", `%${keyword}%`);
     query = query
@@ -354,6 +372,7 @@ const listReviewManuscripts = async (req, res, next) => {
       chapterId: chapter_id,
       offset,
       limit,
+      requestingUser: req.user,
     });
     return res.status(200).json({
       success: true,
