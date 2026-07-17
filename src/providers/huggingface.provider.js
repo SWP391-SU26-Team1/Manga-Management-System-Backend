@@ -1,4 +1,5 @@
 const AppError = require('../utils/appError');
+const { Client, handle_file } = require('@gradio/client');
 
 const HF_API_KEY = process.env.HF_API_KEY;
 const DEFAULT_MODEL = process.env.HF_COLORING_MODEL || 'stabilityai/stable-diffusion-3-medium-diffusers';
@@ -18,7 +19,29 @@ const generateColoring = async (imageUrl, prompt, modelName) => {
       throw new Error(`Failed to download reference image from ${imageUrl} (Status: ${imgRes.status})`);
     }
     const imageBuffer = await imgRes.arrayBuffer();
-    console.log(`[HF Provider] Image downloaded successfully, size: ${imageBuffer.byteLength} bytes`);
+    const buffer = Buffer.from(imageBuffer);
+    console.log(`[HF Provider] Image downloaded successfully, size: ${buffer.byteLength} bytes`);
+
+    // 1.5 Handle Gradio Space Manga Colorizer
+    if (activeModel === 'sharky172/manga-light-colorizer') {
+      console.log(`[HF Provider] Connecting to Gradio Space: ${activeModel}`);
+      const app = await Client.connect(activeModel, {
+        hf_token: HF_API_KEY
+      });
+      console.log(`[HF Provider] Submitting colorization job to Space...`);
+      const result = await app.predict('/colorize_image', [
+        handle_file(buffer),
+        768 // High quality resolution
+      ]);
+      const colorizedUrl = result.data[0].url;
+      console.log(`[HF Provider] Gradio Space colorization complete. Fetching colorized image from: ${colorizedUrl}`);
+      const outputRes = await fetch(colorizedUrl);
+      if (!outputRes.ok) {
+        throw new Error(`Failed to download colorized image from Gradio Space: ${outputRes.status}`);
+      }
+      const outputBuffer = await outputRes.arrayBuffer();
+      return Buffer.from(outputBuffer);
+    }
 
     // 2. Call HuggingFace Inference API
     const hfUrl = `https://router.huggingface.co/hf-inference/models/${activeModel}`;
