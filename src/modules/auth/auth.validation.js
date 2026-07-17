@@ -76,7 +76,6 @@ const verifyRegisterOtpSchema = z.object({
     otp: z.string().regex(/^\d{6}$/),
   }),
 });
-
 module.exports = {
   registerSchema,
   loginSchema,
