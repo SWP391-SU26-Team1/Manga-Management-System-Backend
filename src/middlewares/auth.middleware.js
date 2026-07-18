@@ -1,4 +1,4 @@
-const jwt = require('jsonwebtoken');
+const { verifyAccessToken } = require('../utils/jwt.helper');
 const { sendError } = require('../utils/response');
 
 const authenticateToken = (req, res, next) => {
@@ -9,13 +9,12 @@ const authenticateToken = (req, res, next) => {
     return sendError(res, 401, 'Access token required');
   }
 
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) {
-      return sendError(res, 403, 'Invalid or expired token');
-    }
-    req.user = user;
+  try {
+    req.user = verifyAccessToken(token);
     next();
-  });
+  } catch (err) {
+    return sendError(res, err.statusCode || 401, err.message || 'Invalid or expired token');
+  }
 };
 
 const optionalAuthenticateToken = (req, res, next) => {
@@ -26,12 +25,12 @@ const optionalAuthenticateToken = (req, res, next) => {
     return next();
   }
 
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (!err) {
-      req.user = user;
-    }
-    next();
-  });
+  try {
+    req.user = verifyAccessToken(token);
+  } catch {
+    // invalid token — still continue as unauthenticated
+  }
+  next();
 };
 
 module.exports = {

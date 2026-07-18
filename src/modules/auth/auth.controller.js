@@ -1,12 +1,23 @@
 const authService = require("./auth.service");
 const { sendSuccess } = require("../../utils/response");
 const AppError = require("../../utils/appError");
-// Google token verification/exchange implemented in auth.service
+
+/** Cookie options for the HttpOnly refresh token cookie */
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'strict',
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
+};
+
+/** Helper to extract refresh token from incoming request cookie */
+const getRefreshTokenFromCookie = (req) => req.cookies?.refreshToken;
 
 const register = async (req, res, next) => {
   try {
-    const data = await authService.register(req.body);
-    return sendSuccess(res, 201, data, "Registered successfully");
+    const { token, refreshToken, user } = await authService.register(req.body);
+    res.cookie('refreshToken', refreshToken, COOKIE_OPTIONS);
+    return sendSuccess(res, 201, { token, user }, "Registered successfully");
   } catch (error) {
     next(error);
   }
@@ -14,8 +25,9 @@ const register = async (req, res, next) => {
 
 const login = async (req, res, next) => {
   try {
-    const data = await authService.login(req.body);
-    return sendSuccess(res, 200, data, "Login successful");
+    const { token, refreshToken, user } = await authService.login(req.body);
+    res.cookie('refreshToken', refreshToken, COOKIE_OPTIONS);
+    return sendSuccess(res, 200, { token, user }, "Login successful");
   } catch (error) {
     next(error);
   }
@@ -49,21 +61,37 @@ const loginWithGoogle = async (req, res, next) => {
       return next(new AppError("Google email must be verified", 400));
     }
 
-    const data = await authService.loginWithGoogle({
+    const { token, refreshToken, user } = await authService.loginWithGoogle({
       email: payload.email,
       googleId: payload.sub,
       name: payload.name || payload.email.split("@")[0],
       avatar_url: payload.picture,
     });
 
-    return sendSuccess(res, 200, data, "Google login successful");
+    res.cookie('refreshToken', refreshToken, COOKIE_OPTIONS);
+    return sendSuccess(res, 200, { token, user }, "Google login successful");
   } catch (error) {
     next(error);
   }
 };
 
-const logout = (req, res) => {
-  return sendSuccess(res, 200, null, "Logged out successfully");
+const logout = async (req, res, next) => {
+  try {
+    const refreshToken = getRefreshTokenFromCookie(req);
+    await authService.logout(refreshToken);
+    res.clearCookie('refreshToken', COOKIE_OPTIONS);
+    return sendSuccess(res, 200, null, "Logged out successfully");
+  } catch (error) { next(error); }
+};
+
+const refresh = async (req, res, next) => {
+  try {
+    const refreshToken = getRefreshTokenFromCookie(req);
+    if (!refreshToken) return next(new AppError('Refresh token cookie is missing', 401));
+    const { token, refreshToken: newRefreshToken, user } = await authService.refresh(refreshToken);
+    res.cookie('refreshToken', newRefreshToken, COOKIE_OPTIONS);
+    return sendSuccess(res, 200, { token, user }, 'Token refreshed');
+  } catch (error) { next(error); }
 };
 
 const getMe = async (req, res, next) => {
@@ -142,6 +170,7 @@ module.exports = {
   login,
   loginWithGoogle,
   logout,
+  refresh,
   getMe,
   changePassword,
   forgotPassword,

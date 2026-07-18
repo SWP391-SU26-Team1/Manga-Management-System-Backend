@@ -640,9 +640,22 @@ Columns:
 | `created_at` | TIMESTAMPTZ | no | `now()` | |
 | `updated_at` | TIMESTAMPTZ | no | `now()` | update trigger |
 
-Unique constraints: `UNIQUE (task_id, user_id)`
+### user_refresh_token
 
-Indexes: `idx_page_task_draft_task_id`, `idx_page_task_draft_user_id`
+Primary key: `token_id`
+
+Columns:
+
+| Column | Type | Required | Default | Notes |
+| --- | --- | --- | --- | --- |
+| `token_id` | UUID | yes | `gen_random_uuid()` | PK |
+| `user_id` | UUID | yes | | FK to `users.user_id`, cascade delete |
+| `token` | TEXT | yes | | unique refresh token string |
+| `expires_at` | TIMESTAMPTZ | yes | | expiration date |
+| `created_at` | TIMESTAMPTZ | no | `now()` | |
+| `updated_at` | TIMESTAMPTZ | no | `now()` | update trigger |
+
+Indexes: `idx_refresh_token_user_id`, `idx_refresh_token_token`
 
 ## Status Constants
 
@@ -744,7 +757,7 @@ const PAGE_AI_SUGGESTION_STATUS = [
 
 ## Supabase Relationship Notes
 
-Use table names exactly as defined: `users`, `notification`, `series`, `series_member`, `chapter`, `page`, `page_region`, `page_task`, `page_version`, `page_submission`, `page_task_feedback`, `annotation`, `review_session`, `vote`, `ranking_period`, `series_ranking`, `chapter_ranking`, `manuscript`, `manuscript_file`, `page_ai_suggestion`, `bookmark`, `chapter_like`, `view_log`, `comment`, `page_task_draft`.
+Use table names exactly as defined: `users`, `notification`, `series`, `series_member`, `chapter`, `page`, `page_region`, `page_task`, `page_version`, `page_submission`, `page_task_feedback`, `annotation`, `review_session`, `vote`, `ranking_period`, `series_ranking`, `chapter_ranking`, `manuscript`, `manuscript_file`, `page_ai_suggestion`, `bookmark`, `chapter_like`, `view_log`, `comment`, `page_task_draft`, `user_refresh_token`.
 
 Important foreign key constraint names for joined selects:
 
@@ -801,6 +814,7 @@ Important foreign key constraint names for joined selects:
 | `comment`            | `parent_comment_id`  | `fk_comment_parent`             | `comment.comment_id`            |
 | `page_task_draft`    | `task_id`            | `fk_page_task_draft_task`       | `page_task.task_id`             |
 | `page_task_draft`    | `user_id`            | `fk_page_task_draft_user`       | `users.user_id`                 |
+| `user_refresh_token` | `user_id`            | `fk_refresh_token_user`         | `users.user_id`                 |
 
 When a table has multiple FKs to `users`, join with constraint names to avoid ambiguity:
 

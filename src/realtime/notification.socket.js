@@ -1,5 +1,5 @@
 const { Server } = require('socket.io');
-const jwt = require('jsonwebtoken');
+const { verifyAccessToken } = require('../utils/jwt.helper');
 
 let io = null;
 
@@ -14,11 +14,12 @@ const init = (httpServer) => {
     const token = socket.handshake.auth?.token;
     if (!token) return next(new Error('Access token required'));
 
-    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-      if (err) return next(new Error('Invalid or expired token'));
-      socket.user = user;
+    try {
+      socket.user = verifyAccessToken(token);
       next();
-    });
+    } catch (err) {
+      return next(new Error(err.message || 'Invalid or expired token'));
+    }
   });
 
   io.on('connection', (socket) => {

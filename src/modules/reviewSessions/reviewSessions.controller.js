@@ -19,7 +19,11 @@ const getSessionById = async (req, res, next) => {
 
 const createSession = async (req, res, next) => {
   try {
-    const data = await service.createSession(req.body);
+    const payload = {
+      ...req.body,
+      created_by_user_id: req.user.user_id,
+    };
+    const data = await service.createSession(payload);
     return sendSuccess(res, 201, data, 'Review session created');
   } catch (error) { next(error); }
 };
