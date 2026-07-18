@@ -225,7 +225,11 @@ const listAdminSessions = makeListHandler(
 const getAdminSessionById = makeGetByIdHandler(reviewSessionsRepo, 'sessionId');
 const createAdminSession = async (req, res, next) => {
   try {
-    const data = await reviewSessionsSvc.createSession(req.body);
+    const payload = {
+      ...req.body,
+      created_by_user_id: req.user.user_id,
+    };
+    const data = await reviewSessionsSvc.createSession(payload);
     return sendSuccess(res, 201, data, 'Review session created');
   } catch (e) { next(e); }
 };

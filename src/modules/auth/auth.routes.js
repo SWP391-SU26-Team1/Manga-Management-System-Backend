@@ -68,6 +68,33 @@ router.post("/login", validate(v.loginSchema), controller.login);
 
 /**
  * @swagger
+ * /api/auth/refresh:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Refresh access token using HttpOnly refresh token cookie
+ *     security: []
+ *     responses:
+ *       200:
+ *         description: New access token issued
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     token: { type: string }
+ *                     user: { type: object }
+ *       401: { description: Refresh token missing or invalid }
+ *       403: { description: Refresh token revoked or expired }
+ */
+router.post("/refresh", controller.refresh);
+
+
+/**
+ * @swagger
  * /api/auth/login-google:
  *   post:
  *     tags: [Auth]

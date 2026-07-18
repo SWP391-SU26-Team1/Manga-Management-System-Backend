@@ -1,8 +1,9 @@
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
-const jwt = require("jsonwebtoken");
 const usersRepo = require("../users/users.repository");
+const authRepo = require("./auth.repository");
 const AppError = require("../../utils/appError");
+const { generateTokens, verifyRefreshToken, getRefreshExpiresAt } = require("../../utils/jwt.helper");
 const { OAuth2Client } = require("google-auth-library");
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
@@ -151,18 +152,8 @@ const exchangeGoogleCode = async (code, redirectUri) => {
   return ticket.getPayload();
 };
 
-// Tạo payload token chỉ gồm thông tin cần thiết.
-// Không nên để quá nhiều dữ liệu nhạy cảm vào token.
-const createTokenPayload = (user) => ({
-  user_id: user.user_id,
-  email: user.email,
-  role: user.role,
-});
-
-const signToken = (user) =>
-  jwt.sign(createTokenPayload(user), process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || "7d",
-  });
+// Token generation is now handled by jwt.helper.js (generateTokens)
+// which creates both Access Token (short-lived) and Refresh Token (long-lived).
 
 // Kiểm tra trạng thái user - dùng chung cho cả Email và Google
 const checkUserStatus = (user) => {
@@ -201,7 +192,6 @@ const register = async ({ username, email, password, name, role }) => {
     expiresAt: Date.now() + 10 * 60 * 1000,
     payload: { username, email: normalizedEmail, password: hashed, name, role },
   });
-
   await sendOtpEmail(normalizedEmail, otp, "register");
   return { otpSent: true, email: normalizedEmail };
 };
@@ -263,8 +253,9 @@ const verifyRegisterOtp = async (email, otp) => {
 
   registerOtpStore.delete(normalizedEmail);
 
-  const token = signToken(user);
-  return { token, user };
+  const { token, refreshToken } = generateTokens(user);
+  await authRepo.saveRefreshToken(user.user_id, refreshToken, getRefreshExpiresAt());
+  return { token, refreshToken, user };
 };
 
 const resendRegisterOtp = async (email) => {
@@ -287,11 +278,9 @@ const resendRegisterOtp = async (email) => {
 // Đăng nhập bằng Email - Kiểm tra mật khẩu trước, sau đó mới kiểm tra trạng thái
 const login = async ({ email, password }) => {
   // Bước 1: Tìm user trong database theo email.
-  // Nếu không tìm thấy thì không thể đăng nhập.
   const user = await usersRepo.findByEmail(email);
 
-  // Bước 2: Nếu user tồn tại thì so sánh mật khẩu.
-  // Đây là bước quan trọng vì mật khẩu trên database là hash, không phải text.
+  // Bước 2: So sánh mật khẩu
   if (!user) {
     throw new AppError("Invalid email or password", 401);
   }
@@ -305,8 +294,9 @@ const login = async ({ email, password }) => {
   checkUserStatus(user);
 
   const { password: _pw, ...safeUser } = user;
-  const token = signToken(safeUser);
-  return { token, user: safeUser };
+  const { token, refreshToken } = generateTokens(safeUser);
+  await authRepo.saveRefreshToken(safeUser.user_id, refreshToken, getRefreshExpiresAt());
+  return { token, refreshToken, user: safeUser };
 };
 
 const loginWithGoogle = async ({ email, googleId, name, avatar_url }) => {
@@ -342,12 +332,52 @@ const loginWithGoogle = async ({ email, googleId, name, avatar_url }) => {
     return { otpSent: true, email: normalizedEmail };
   }
 
-  // PHẢI KIỂM TRA TRẠNG THÁI - Điều này không được bỏ qua dù là Google hay Email
+  // PHẢI KIỂM TRA TRẠNG THÁI
   checkUserStatus(user);
 
   const { password: _pw, ...safeUser } = user;
-  const token = signToken(safeUser);
-  return { token, user: safeUser };
+  const { token, refreshToken } = generateTokens(safeUser);
+  await authRepo.saveRefreshToken(safeUser.user_id, refreshToken, getRefreshExpiresAt());
+  return { token, refreshToken, user: safeUser };
+};
+
+/**
+ * Rotate a Refresh Token: verify old token, check DB, generate new pair, swap in DB
+ */
+const refresh = async (oldRefreshToken) => {
+  if (!oldRefreshToken) throw new AppError('Refresh token is required', 401);
+
+  // 1. Verify JWT signature & expiry first
+  const decoded = verifyRefreshToken(oldRefreshToken);
+
+  // 2. Check existence in DB (Stateful check — revoked tokens will not exist)
+  const record = await authRepo.findRefreshToken(oldRefreshToken);
+  if (!record) throw new AppError('Refresh token not found or already revoked', 403);
+
+  // 3. Get latest user data & check status
+  const user = await usersRepo.findById(decoded.user_id);
+  if (!user) throw new AppError('User not found', 404);
+  checkUserStatus(user);
+
+  const { password: _pw, ...safeUser } = user;
+
+  // 4. Rotate: delete old, generate new pair, save new
+  await authRepo.deleteRefreshToken(oldRefreshToken);
+  const { token, refreshToken: newRefreshToken } = generateTokens(safeUser);
+  await authRepo.saveRefreshToken(safeUser.user_id, newRefreshToken, getRefreshExpiresAt());
+
+  return { token, refreshToken: newRefreshToken, user: safeUser };
+};
+
+/**
+ * Logout: remove the Refresh Token from DB
+ */
+const logout = async (refreshToken) => {
+  if (refreshToken) {
+    await authRepo.deleteRefreshToken(refreshToken).catch(() => {
+      // ignore DB errors on logout — token may already be gone
+    });
+  }
 };
 
 const getMe = async (userId) => {
@@ -420,6 +450,8 @@ const resetPassword = async ({ email, otp, newPassword, confirmPassword }) => {
   const hashed = await bcrypt.hash(newPassword, 10);
   await usersRepo.update(user.user_id, { password: hashed });
   passwordResetOtpStore.delete(normalizedEmail);
+  // Force logout all devices after password reset
+  await authRepo.deleteAllRefreshTokensOfUser(user.user_id);
 };
 
 const changePassword = async (userId, { old_password, new_password }) => {
@@ -436,6 +468,8 @@ const changePassword = async (userId, { old_password, new_password }) => {
 
   const hashed = await bcrypt.hash(new_password, 10);
   await usersRepo.update(userId, { password: hashed });
+  // Force logout all devices after password change
+  await authRepo.deleteAllRefreshTokensOfUser(userId);
 };
 
 module.exports = {
@@ -444,6 +478,8 @@ module.exports = {
   resendRegisterOtp,
   login,
   loginWithGoogle,
+  refresh,
+  logout,
   getMe,
   changePassword,
   sendPasswordResetOtp,

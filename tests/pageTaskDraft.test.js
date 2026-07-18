@@ -19,11 +19,11 @@ describe('Page Task Draft Workflow', () => {
   beforeAll(() => {
     assistantToken = jwt.sign(
       { user_id: mockUserId, email: 'assistant@test.com', role: 'assistant' },
-      process.env.JWT_SECRET || 'test-secret-do-not-use-in-prod'
+      process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || 'test-secret-do-not-use-in-prod'
     );
     otherAssistantToken = jwt.sign(
       { user_id: mockOtherUserId, email: 'other@test.com', role: 'assistant' },
-      process.env.JWT_SECRET || 'test-secret-do-not-use-in-prod'
+      process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || 'test-secret-do-not-use-in-prod'
     );
   });
 
