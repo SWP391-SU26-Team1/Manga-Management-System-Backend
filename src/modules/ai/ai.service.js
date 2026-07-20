@@ -2,6 +2,8 @@ const aiRepo = require('./ai.repository');
 const pagesRepo = require('../pages/pages.repository');
 const pageVersionsRepo = require('../pageVersions/pageVersions.repository');
 const pageTasksRepo = require('../pageTasks/pageTasks.repository');
+const chaptersRepo = require('../chapters/chapters.repository');
+const seriesRepo = require('../series/series.repository');
 const groqProvider = require('../../providers/groq.provider');
 const hfProvider = require('../../providers/huggingface.provider');
 const cloudinaryProvider = require('../../providers/cloudinary.provider');
@@ -18,7 +20,7 @@ const runPanelDetectionJob = async (suggestionId, imageUrl, customPrompt, custom
     await aiRepo.updateCompleted(suggestionId, {
       resultData: { panels },
       processingTimeMs,
-      aiModel: customModel || process.env.GROQ_VISION_MODEL || 'meta-llama/llama-4-scout-17b-16e-instruct',
+      aiModel: customModel || process.env.GROQ_VISION_MODEL || 'llama-3.2-11b-vision-preview',
     });
   } catch (err) {
     const processingTimeMs = Date.now() - startTime;
@@ -30,12 +32,12 @@ const runPanelDetectionJob = async (suggestionId, imageUrl, customPrompt, custom
   }
 };
 
-const runSmartColoringJob = async (suggestionId, imageUrl, customPrompt, customModel, taskContent) => {
+const runSmartColoringJob = async (suggestionId, imageUrl, customPrompt, customModel, taskContent, mangaContext = {}) => {
   const startTime = Date.now();
   try {
-    // 1. Expand the prompt using Groq LLM
-    console.log(`[AI Service] Expanding prompt. Custom Prompt: "${customPrompt || ''}", Task Content: "${taskContent || ''}"`);
-    const expandedPrompt = await groqProvider.expandColoringPrompt(customPrompt, taskContent);
+    // 1. Expand the prompt using Groq LLM (passing metadata context)
+    console.log(`[AI Service] Expanding prompt. Custom Prompt: "${customPrompt || ''}", Task Content: "${taskContent || ''}", Context: ${JSON.stringify(mangaContext)}`);
+    const expandedPrompt = await groqProvider.expandColoringPrompt(customPrompt, taskContent, mangaContext);
     const prompt = getSmartColoringPrompt(expandedPrompt);
 
     // 2. Generate coloring
@@ -90,7 +92,7 @@ const createPanelDetection = async (pageId, userId, { prompt, ai_model } = {}) =
     status: 'processing',
     prompt: prompt || getPanelDetectionPrompt(),
     reference_image_url: imageUrl,
-    ai_model: ai_model || process.env.GROQ_VISION_MODEL || 'meta-llama/llama-4-scout-17b-16e-instruct',
+    ai_model: ai_model || process.env.GROQ_VISION_MODEL || 'llama-3.2-11b-vision-preview',
   });
 
   // Trigger background job asynchronously (non-blocking)
@@ -125,6 +127,29 @@ const createSmartColoring = async (taskId, userId, userRole, { prompt, ai_model,
 
   const attemptNumber = (await aiRepo.countAttemptsByTask(taskId)) + 1;
 
+  // Retrieve rich metadata context about this manga page for the AI pre-processor
+  let seriesTitle = '';
+  let seriesGenre = '';
+  let chapterTitle = '';
+  try {
+    const page = await pagesRepo.findById(task.page_id);
+    if (page && page.chapter_id) {
+      const chapter = await chaptersRepo.findById(page.chapter_id);
+      if (chapter) {
+        chapterTitle = chapter.title || '';
+        if (chapter.series_id) {
+          const series = await seriesRepo.findById(chapter.series_id);
+          if (series) {
+            seriesTitle = series.title || '';
+            seriesGenre = series.genre || '';
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[AI Service] Failed to retrieve series/chapter metadata context for smart coloring:', err.message);
+  }
+
   const suggestion = await aiRepo.create({
     page_id: task.page_id,
     task_id: taskId,
@@ -137,8 +162,12 @@ const createSmartColoring = async (taskId, userId, userRole, { prompt, ai_model,
     ai_model: ai_model || process.env.HF_COLORING_MODEL || 'stabilityai/stable-diffusion-3-medium-diffusers',
   });
 
-  // Trigger background job asynchronously (non-blocking)
-  runSmartColoringJob(suggestion.suggestion_id, imageUrl, prompt, ai_model, task.content).catch((err) => {
+  // Trigger background job asynchronously (non-blocking) with metadata context
+  runSmartColoringJob(suggestion.suggestion_id, imageUrl, prompt, ai_model, task.content, {
+    seriesTitle,
+    seriesGenre,
+    chapterTitle
+  }).catch((err) => {
     console.error('❌ Unhandled error in runSmartColoringJob:', err);
   });
 

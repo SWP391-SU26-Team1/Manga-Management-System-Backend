@@ -47,21 +47,24 @@ const generateColoring = async (imageUrl, prompt, modelName) => {
     const hfUrl = `https://router.huggingface.co/hf-inference/models/${activeModel}`;
     console.log(`[HF Provider] Sending request to Hugging Face URL: ${hfUrl}`);
     
-    const isTextToImage = activeModel.toLowerCase().includes('flux') || activeModel.toLowerCase().includes('stable-diffusion');
+    // Determine if we should perform Text-to-Image or Image-to-Image
+    // Flux is strictly Text-to-Image on the HF Inference API
+    const isFlux = activeModel.toLowerCase().includes('flux');
+    const hasImage = !!imageBuffer;
     let requestPayload;
 
-    if (isTextToImage) {
-      console.log(`[HF Provider] Text-to-image model detected. Sending text-to-image prompt without input image.`);
-      requestPayload = {
-        inputs: prompt
-      };
-    } else {
-      console.log(`[HF Provider] Image-to-image model detected. Sending base64 input image and prompt parameters.`);
+    if (hasImage && !isFlux) {
+      console.log(`[HF Provider] Image-to-image mode. Model: ${activeModel}. Sending base64 input image and prompt.`);
       requestPayload = {
         inputs: Buffer.from(imageBuffer).toString('base64'),
         parameters: {
           prompt: prompt
         }
+      };
+    } else {
+      console.log(`[HF Provider] Text-to-image mode. Model: ${activeModel}. Sending prompt only.`);
+      requestPayload = {
+        inputs: prompt
       };
     }
 
