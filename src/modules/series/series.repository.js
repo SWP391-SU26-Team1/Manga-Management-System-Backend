@@ -12,6 +12,7 @@ const findAll = async ({
   status,
   genre,
   keyword,
+  user_id,
   offset,
   limit,
   sort,
@@ -23,6 +24,20 @@ const findAll = async ({
       `*, series_member(*, users:user_id(user_id, username, name, avatar_url, role))`,
       { count: "exact" },
     );
+
+  if (user_id) {
+    const { data: members, error: memErr } = await supabase
+      .from("series_member")
+      .select("series_id")
+      .eq("user_id", user_id);
+    if (memErr) throw memErr;
+    
+    const seriesIds = members.map((m) => m.series_id);
+    if (seriesIds.length === 0) {
+      return { data: [], total: 0 };
+    }
+    query = query.in("series_id", seriesIds);
+  }
 
   if (status) query = query.eq("status", status);
   if (genre) query = query.ilike("genre", `%${genre}%`);

@@ -6,8 +6,8 @@ const { parsePagination, buildPaginationMeta } = require('../../utils/pagination
 const listSeries = async (req, res, next) => {
   try {
     const { page, limit, offset } = parsePagination(req.query);
-    const { status, genre, keyword, sort, order } = req.query;
-    const { data, total } = await seriesService.listSeries({ status, genre, keyword, page, limit, offset, sort, order });
+    const { status, genre, keyword, user_id, sort, order } = req.query;
+    const { data, total } = await seriesService.listSeries({ status, genre, keyword, user_id, page, limit, offset, sort, order });
     return res.status(200).json({ success: true, message: 'Success', data, pagination: buildPaginationMeta(page, limit, total) });
   } catch (error) {
     next(error);
