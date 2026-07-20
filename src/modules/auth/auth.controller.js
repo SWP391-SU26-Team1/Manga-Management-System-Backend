@@ -15,9 +15,8 @@ const getRefreshTokenFromCookie = (req) => req.cookies?.refreshToken;
 
 const register = async (req, res, next) => {
   try {
-    const { token, refreshToken, user } = await authService.register(req.body);
-    res.cookie('refreshToken', refreshToken, COOKIE_OPTIONS);
-    return sendSuccess(res, 201, { token, user }, "Registered successfully");
+    const data = await authService.register(req.body);
+    return sendSuccess(res, 201, data, "OTP sent successfully");
   } catch (error) {
     next(error);
   }
@@ -147,8 +146,9 @@ const resetPassword = async (req, res, next) => {
 const verifyRegisterOtp = async (req, res, next) => {
   try {
     const { email, otp } = req.body;
-    const data = await authService.verifyRegisterOtp(email, otp);
-    return sendSuccess(res, 200, data, "OTP verified successfully. Registration complete");
+    const { token, refreshToken, user } = await authService.verifyRegisterOtp(email, otp);
+    res.cookie('refreshToken', refreshToken, COOKIE_OPTIONS);
+    return sendSuccess(res, 200, { token, user }, "OTP verified successfully. Registration complete");
   } catch (error) {
     next(error);
   }
