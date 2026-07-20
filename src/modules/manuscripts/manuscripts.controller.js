@@ -8,7 +8,14 @@ const listManuscripts = async (req, res, next) => {
     const userId = req.params.userId;
     const seriesId = req.params.seriesId;
     const chapterId = req.params.chapterId;
-    const { data, total } = await service.listManuscripts({ userId, seriesId, chapterId, offset, limit });
+    const { data, total } = await service.listManuscripts({
+      userId,
+      seriesId,
+      chapterId,
+      offset,
+      limit,
+      requestingUser: req.user,
+    });
     return res.status(200).json({ success: true, message: 'Success', data, pagination: buildPaginationMeta(page, limit, total) });
   } catch (error) { next(error); }
 };

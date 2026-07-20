@@ -1,4 +1,4 @@
-﻿const { z } = require('zod');
+const { z } = require('zod');
 const { SERIES_STATUS } = require('../../constants/status');
 
 // PostgreSQL accepts UUID-shaped values even when they do not encode an RFC version.
@@ -41,6 +41,7 @@ const listSeriesSchema = z.object({
     status: z.enum(SERIES_STATUS).optional(),
     genre: z.string().optional(),
     keyword: z.string().optional(),
+    user_id: uuidParam.optional(),
     page: z.string().optional(),
     limit: z.string().optional(),
     sort: z.string().optional(),
@@ -48,4 +49,12 @@ const listSeriesSchema = z.object({
   }),
 });
 
-module.exports = { createSeriesSchema, updateSeriesSchema, updateSeriesStatusSchema, seriesIdParamSchema, listSeriesSchema };
+const listSeriesCommentsSchema = z.object({
+  params: z.object({ seriesId: uuidParam }),
+  query: z.object({
+    page: z.string().optional(),
+    limit: z.string().optional(),
+  }),
+});
+
+module.exports = { createSeriesSchema, updateSeriesSchema, updateSeriesStatusSchema, seriesIdParamSchema, listSeriesSchema, listSeriesCommentsSchema };

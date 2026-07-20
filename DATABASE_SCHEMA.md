@@ -86,6 +86,89 @@ Unique constraints: `UNIQUE (series_id, user_id)`
 
 Indexes: `idx_series_member_series_id`, `idx_series_member_user_id`
 
+### bookmark
+
+Primary key: `bookmark_id`
+
+Columns:
+
+| Column             | Type      | Required | Default             | Notes                                    |
+| ------------------ | --------- | -------- | ------------------- | ---------------------------------------- |
+| `bookmark_id`      | UUID      | yes      | `gen_random_uuid()` | PK                                       |
+| `user_id`          | UUID      | yes      |                     | FK to `users.user_id`, cascade delete    |
+| `series_id`        | UUID      | yes      |                     | FK to `series.series_id`, cascade delete |
+| `chapter_id`       | UUID      | no       |                     | FK to `chapter.chapter_id`, set null     |
+| `progress_percent` | INT       | no       | `0`                 |                                          |
+| `last_read_at`     | TIMESTAMP | no       | `CURRENT_TIMESTAMP` |                                          |
+
+Unique constraints: `UNIQUE (user_id, series_id)`
+
+Indexes: `idx_bookmark_user_id`, `idx_bookmark_series_id`
+
+### bookmark
+
+Primary key: `bookmark_id`
+
+Columns:
+
+| Column                 | Type        | Required | Default             | Notes                      |
+| ---------------------- | ----------- | -------- | ------------------- | -------------------------- |
+| `bookmark_id`          | UUID        | yes      | `gen_random_uuid()` | PK                         |
+| `user_id`              | UUID        | yes      |                     | FK to `users.user_id`      |
+| `series_id`            | UUID        | yes      |                     | FK to `series.series_id`   |
+| `last_read_chapter_id` | UUID        | no       |                     | FK to `chapter.chapter_id` |
+| `page_id`              | UUID        | no       |                     | FK to `page.page_id`       |
+| `created_at`           | TIMESTAMPTZ | no       | `now()`             |                            |
+| `updated_at`           | TIMESTAMPTZ | no       | `now()`             |                            |
+
+Unique constraints: `UNIQUE (user_id, series_id)`
+
+### chapter_like
+
+Primary key: `like_id`
+
+Columns:
+
+| Column       | Type        | Required | Default             | Notes                      |
+| ------------ | ----------- | -------- | ------------------- | -------------------------- |
+| `like_id`    | UUID        | yes      | `gen_random_uuid()` | PK                         |
+| `user_id`    | UUID        | yes      |                     | FK to `users.user_id`      |
+| `chapter_id` | UUID        | yes      |                     | FK to `chapter.chapter_id` |
+| `created_at` | TIMESTAMPTZ | no       | `now()`             |                            |
+
+Unique constraints: `UNIQUE (user_id, chapter_id)`
+
+### view_log
+
+Primary key: `log_id`
+
+Columns:
+
+| Column       | Type        | Required | Default             | Notes                      |
+| ------------ | ----------- | -------- | ------------------- | -------------------------- |
+| `log_id`     | UUID        | yes      | `gen_random_uuid()` | PK                         |
+| `chapter_id` | UUID        | yes      |                     | FK to `chapter.chapter_id` |
+| `series_id`  | UUID        | no       |                     | FK to `series.series_id`   |
+| `user_id`    | UUID        | no       |                     | FK to `users.user_id`      |
+| `created_at` | TIMESTAMPTZ | no       | `now()`             |                            |
+
+### comment
+
+Primary key: `comment_id`
+
+Columns:
+
+| Column              | Type        | Required | Default             | Notes                      |
+| ------------------- | ----------- | -------- | ------------------- | -------------------------- |
+| `comment_id`        | UUID        | yes      | `gen_random_uuid()` | PK                         |
+| `user_id`           | UUID        | yes      |                     | FK to `users.user_id`      |
+| `chapter_id`        | UUID        | yes      |                     | FK to `chapter.chapter_id` |
+| `parent_comment_id` | UUID        | no       |                     | FK to `comment.comment_id` |
+| `content`           | TEXT        | yes      |                     |                            |
+| `status`            | VARCHAR(50) | yes      | `active`            |                            |
+| `created_at`        | TIMESTAMPTZ | no       | `now()`             |                            |
+| `updated_at`        | TIMESTAMPTZ | no       | `now()`             |                            |
+
 ### chapter
 
 Primary key: `chapter_id`
@@ -442,6 +525,138 @@ Status values: `uploaded`, `validated`, `deleted`
 
 Indexes: `idx_manuscript_file_manuscript_id`
 
+### page_ai_suggestion
+
+Primary key: `suggestion_id`
+
+Columns:
+
+| Column                | Type         | Required | Default             | Notes                                   |
+| --------------------- | ------------ | -------- | ------------------- | --------------------------------------- |
+| `suggestion_id`       | UUID         | yes      | `gen_random_uuid()` | PK                                      |
+| `page_id`             | UUID         | yes      |                     | FK to `page.page_id`, cascade delete    |
+| `region_id`           | UUID         | no       |                     | FK to `page_region.region_id`, set null |
+| `task_id`             | UUID         | no       |                     | FK to `page_task.task_id`, set null     |
+| `requested_by_id`     | UUID         | yes      |                     | FK to `users.user_id`, cascade delete   |
+| `attempt_number`      | INTEGER      | yes      | `1`                 | Count number of AI runs for this task   |
+| `ai_model`            | VARCHAR(100) | no       |                     |                                         |
+| `prompt`              | TEXT         | no       |                     |                                         |
+| `reference_image_url` | TEXT         | no       |                     |                                         |
+| `result_data`         | JSONB        | no       |                     |                                         |
+| `status`              | VARCHAR(50)  | yes      | `processing`        | check constraint                        |
+| `processing_time_ms`  | INTEGER      | no       |                     |                                         |
+| `created_at`          | TIMESTAMPTZ  | no       | `now()`             |                                         |
+| `updated_at`          | TIMESTAMPTZ  | no       | `now()`             | update trigger                          |
+
+Status values: `processing`, `completed`, `failed`, `cancelled`, `applied`, `rejected`
+
+Indexes: `idx_ai_suggestion_page_id`, `idx_ai_suggestion_region_id`, `idx_ai_suggestion_task_id`, `idx_ai_suggestion_status`, `idx_ai_suggestion_requested_by`, `idx_ai_suggestion_created_at`
+
+### bookmark
+
+Primary key: `bookmark_id`
+
+Columns:
+
+| Column | Type | Required | Default | Notes |
+| --- | --- | --- | --- | --- |
+| `bookmark_id` | UUID | yes | `gen_random_uuid()` | PK |
+| `user_id` | UUID | yes | | FK to `users.user_id`, cascade delete |
+| `series_id` | UUID | yes | | FK to `series.series_id`, cascade delete |
+| `last_read_chapter_id` | UUID | no | | FK to `chapter.chapter_id`, set null |
+| `page_id` | UUID | no | | FK to `page.page_id`, set null |
+| `created_at` | TIMESTAMPTZ | no | `now()` | |
+| `updated_at` | TIMESTAMPTZ | no | `now()` | update trigger |
+
+Unique constraints: `uq_bookmark_user_series` UNIQUE (`user_id`, `series_id`)
+
+Indexes: `idx_bookmark_user_id`
+
+### chapter_like
+
+Primary key: `like_id`
+
+Columns:
+
+| Column | Type | Required | Default | Notes |
+| --- | --- | --- | --- | --- |
+| `like_id` | UUID | yes | `gen_random_uuid()` | PK |
+| `user_id` | UUID | yes | | FK to `users.user_id`, cascade delete |
+| `chapter_id` | UUID | yes | | FK to `chapter.chapter_id`, cascade delete |
+| `created_at` | TIMESTAMPTZ | no | `now()` | |
+
+Unique constraints: `uq_chapter_like_user_chapter` UNIQUE (`user_id`, `chapter_id`)
+
+Indexes: `idx_chapter_like_chapter_id`
+
+### view_log
+
+Primary key: `log_id`
+
+Columns:
+
+| Column | Type | Required | Default | Notes |
+| --- | --- | --- | --- | --- |
+| `log_id` | UUID | yes | `gen_random_uuid()` | PK |
+| `chapter_id` | UUID | yes | | FK to `chapter.chapter_id`, cascade delete |
+| `created_at` | TIMESTAMPTZ | no | `now()` | |
+
+Indexes: `idx_view_log_chapter_id`, `idx_view_log_created_at`
+
+### comment
+
+Primary key: `comment_id`
+
+Columns:
+
+| Column | Type | Required | Default | Notes |
+| --- | --- | --- | --- | --- |
+| `comment_id` | UUID | yes | `gen_random_uuid()` | PK |
+| `user_id` | UUID | yes | | FK to `users.user_id`, cascade delete |
+| `chapter_id` | UUID | yes | | FK to `chapter.chapter_id`, cascade delete |
+| `parent_comment_id` | UUID | no | | FK to `comment.comment_id`, cascade delete (parent reply) |
+| `content` | TEXT | yes | | |
+| `status` | VARCHAR(50) | yes | `active` | check constraint |
+| `created_at` | TIMESTAMPTZ | no | `now()` | |
+| `updated_at` | TIMESTAMPTZ | no | `now()` | update trigger |
+
+Status values: `active`, `hidden`, `deleted`, `flagged`
+
+Indexes: `idx_comment_chapter_id`, `idx_comment_parent_id`
+
+### page_task_draft
+
+Primary key: `draft_id`
+
+Columns:
+
+| Column | Type | Required | Default | Notes |
+| --- | --- | --- | --- | --- |
+| `draft_id` | UUID | yes | `gen_random_uuid()` | PK |
+| `task_id` | UUID | yes | | FK to `page_task.task_id`, cascade delete |
+| `user_id` | UUID | yes | | FK to `users.user_id`, cascade delete |
+| `image_url` | TEXT | no | | |
+| `canvas_state` | JSONB | no | | Save vector/layers data of Canvas |
+| `created_at` | TIMESTAMPTZ | no | `now()` | |
+| `updated_at` | TIMESTAMPTZ | no | `now()` | update trigger |
+
+### user_refresh_token
+
+Primary key: `token_id`
+
+Columns:
+
+| Column | Type | Required | Default | Notes |
+| --- | --- | --- | --- | --- |
+| `token_id` | UUID | yes | `gen_random_uuid()` | PK |
+| `user_id` | UUID | yes | | FK to `users.user_id`, cascade delete |
+| `token` | TEXT | yes | | unique refresh token string |
+| `expires_at` | TIMESTAMPTZ | yes | | expiration date |
+| `created_at` | TIMESTAMPTZ | no | `now()` | |
+| `updated_at` | TIMESTAMPTZ | no | `now()` | update trigger |
+
+Indexes: `idx_refresh_token_user_id`, `idx_refresh_token_token`
+
 ## Status Constants
 
 When implementing validation, mirror these in `src/constants/status.js`.
@@ -530,11 +745,19 @@ const RANKING_PERIOD_STATUS = [
   "completed",
   "archived",
 ];
+const PAGE_AI_SUGGESTION_STATUS = [
+  "processing",
+  "completed",
+  "failed",
+  "cancelled",
+  "applied",
+  "rejected",
+];
 ```
 
 ## Supabase Relationship Notes
 
-Use table names exactly as defined: `users`, `notification`, `series`, `series_member`, `chapter`, `page`, `page_region`, `page_task`, `page_version`, `page_submission`, `page_task_feedback`, `annotation`, `review_session`, `vote`, `ranking_period`, `series_ranking`, `chapter_ranking`, `manuscript`, `manuscript_file`.
+Use table names exactly as defined: `users`, `notification`, `series`, `series_member`, `chapter`, `page`, `page_region`, `page_task`, `page_version`, `page_submission`, `page_task_feedback`, `annotation`, `review_session`, `vote`, `ranking_period`, `series_ranking`, `chapter_ranking`, `manuscript`, `manuscript_file`, `page_ai_suggestion`, `bookmark`, `chapter_like`, `view_log`, `comment`, `page_task_draft`, `user_refresh_token`.
 
 Important foreign key constraint names for joined selects:
 
@@ -575,6 +798,23 @@ Important foreign key constraint names for joined selects:
 | `manuscript`         | `series_id`          | `fk_manuscript_series`          | `series.series_id`              |
 | `manuscript`         | `chapter_id`         | `fk_manuscript_chapter`         | `chapter.chapter_id`            |
 | `manuscript_file`    | `manuscript_id`      | `fk_manuscript_file_manuscript` | `manuscript.manuscript_id`      |
+| `page_ai_suggestion` | `page_id`            | `fk_ai_suggestion_page`         | `page.page_id`                  |
+| `page_ai_suggestion` | `region_id`          | `fk_ai_suggestion_region`       | `page_region.region_id`         |
+| `page_ai_suggestion` | `task_id`            | `fk_ai_suggestion_task`         | `page_task.task_id`             |
+| `page_ai_suggestion` | `requested_by_id`    | `fk_ai_suggestion_user`         | `users.user_id`                 |
+| `bookmark`           | `user_id`            | `fk_bookmark_user`              | `users.user_id`                 |
+| `bookmark`           | `series_id`          | `fk_bookmark_series`            | `series.series_id`              |
+| `bookmark`           | `last_read_chapter_id`| `fk_bookmark_chapter`          | `chapter.chapter_id`            |
+| `bookmark`           | `page_id`            | `fk_bookmark_page`              | `page.page_id`                  |
+| `chapter_like`       | `user_id`            | `fk_chapter_like_user`          | `users.user_id`                 |
+| `chapter_like`       | `chapter_id`         | `fk_chapter_like_chapter`       | `chapter.chapter_id`            |
+| `view_log`           | `chapter_id`         | `fk_view_log_chapter`           | `chapter.chapter_id`            |
+| `comment`            | `user_id`            | `fk_comment_user`               | `users.user_id`                 |
+| `comment`            | `chapter_id`         | `fk_comment_chapter`            | `chapter.chapter_id`            |
+| `comment`            | `parent_comment_id`  | `fk_comment_parent`             | `comment.comment_id`            |
+| `page_task_draft`    | `task_id`            | `fk_page_task_draft_task`       | `page_task.task_id`             |
+| `page_task_draft`    | `user_id`            | `fk_page_task_draft_user`       | `users.user_id`                 |
+| `user_refresh_token` | `user_id`            | `fk_refresh_token_user`         | `users.user_id`                 |
 
 When a table has multiple FKs to `users`, join with constraint names to avoid ambiguity:
 

@@ -1,10 +1,10 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const { authenticateToken } = require('../../middlewares/auth.middleware');
-const { requireRole } = require('../../middlewares/role.middleware');
-const { validate } = require('../../middlewares/validate.middleware');
-const v = require('./users.validation');
-const controller = require('./users.controller');
+const { authenticateToken } = require("../../middlewares/auth.middleware");
+const { requireRole } = require("../../middlewares/role.middleware");
+const { validate } = require("../../middlewares/validate.middleware");
+const v = require("./users.validation");
+const controller = require("./users.controller");
 
 router.get(
   "/",
@@ -13,14 +13,12 @@ router.get(
   validate(v.listUsersSchema),
   controller.listUsers,
 );
-
 router.post(
   "/request-role",
   authenticateToken,
   validate(v.requestRoleSchema),
   controller.requestRole,
 );
-
 router.get(
   "/:userId",
   authenticateToken,

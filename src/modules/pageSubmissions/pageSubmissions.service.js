@@ -14,10 +14,18 @@ const AppError = require('../../utils/appError');
  * 4. Update page_task.status = 'submitted'
  * 5. Notify mangaka/editor
  */
-const submitTask = async (assistantId, taskId, { file_url, submission_notes }) => {
+const submitTask = async (user, taskId, { file_url, submission_notes, suggestion_id }) => {
   const task = await tasksRepo.findById(taskId);
   if (!task) throw new AppError('Task not found', 404);
-  if (task.assistant_id !== assistantId) throw new AppError('Forbidden: not your task', 403);
+
+  const user_id = typeof user === 'object' ? user.user_id : user;
+  const role = typeof user === 'object' ? user.role : 'assistant';
+
+  if (role !== 'admin' && task.assistant_id !== user_id) {
+    throw new AppError('Forbidden: not your task', 403);
+  }
+
+  const assistantId = task.assistant_id || user_id;
   if (!['in_progress', 'needs_revision'].includes(task.status)) {
     throw new AppError(`Cannot submit task with status '${task.status}'`, 400);
   }
@@ -56,6 +64,15 @@ const submitTask = async (assistantId, taskId, { file_url, submission_notes }) =
       `Assistant submitted page version ${nextVersion} for review.`,
       'submission_created'
     );
+  }
+
+  if (suggestion_id) {
+    try {
+      const aiRepo = require('../ai/ai.repository');
+      await aiRepo.markApplied(suggestion_id);
+    } catch (err) {
+      console.error('⚠️ Failed to mark AI suggestion as applied during submission:', err.message);
+    }
   }
 
   return { version, submission };

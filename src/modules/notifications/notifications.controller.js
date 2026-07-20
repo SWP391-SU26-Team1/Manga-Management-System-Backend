@@ -4,8 +4,10 @@ const AppError = require('../../utils/appError');
 
 const listNotifications = async (req, res, next) => {
   try {
-    // Non-admin can only see their own notifications
-    const userId = req.user.role === 'admin' ? req.params.userId : req.user.user_id;
+    // Non-admin can only see their own notifications. Admin can query another user or fall back to their own.
+    const userId = req.user.role === 'admin'
+      ? (req.params.userId || req.query.user_id || req.query.userId || req.user.user_id)
+      : req.user.user_id;
     const isRead = req.query.is_read !== undefined ? req.query.is_read === 'true' : undefined;
     const data = await service.listNotifications({ userId, isRead });
     return sendSuccess(res, 200, data, 'Success');
@@ -53,8 +55,10 @@ const markAsRead = async (req, res, next) => {
 
 const markAllRead = async (req, res, next) => {
   try {
-    // Users can only mark their own notifications as read
-    const userId = req.user.role === 'admin' ? req.params.userId : req.user.user_id;
+    // Users can only mark their own notifications as read. Admin can query another user or fall back to their own.
+    const userId = req.user.role === 'admin'
+      ? (req.params.userId || req.query.user_id || req.query.userId || req.user.user_id)
+      : req.user.user_id;
     await service.markAllRead(userId);
     return sendSuccess(res, 200, null, 'All notifications marked as read');
   } catch (error) { next(error); }

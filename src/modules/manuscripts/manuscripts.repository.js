@@ -5,8 +5,21 @@ const SELECT = `*,
   series:series_id(series_id, title),
   chapter:chapter_id(chapter_id, chapter_number, title)`;
 
-const findAll = async ({ userId, seriesId, chapterId, offset = 0, limit = 10 } = {}) => {
+const findAll = async ({ userId, seriesId, chapterId, offset = 0, limit = 10, requestingUser } = {}) => {
   let query = supabase.from('manuscript').select(SELECT, { count: 'exact' });
+  if (requestingUser && requestingUser.role === 'editor') {
+    const { data: memberships } = await supabase
+      .from('series_member')
+      .select('series_id')
+      .eq('user_id', requestingUser.user_id)
+      .in('role_in_series', ['editor', 'pending_editor']);
+      
+    const seriesIds = (memberships || []).map(m => m.series_id);
+    if (seriesIds.length === 0) {
+      return { data: [], total: 0 };
+    }
+    query = query.in('series_id', seriesIds);
+  }
   if (userId) query = query.eq('mangaka_id', userId);
   if (seriesId) query = query.eq('series_id', seriesId);
   if (chapterId) query = query.eq('chapter_id', chapterId);

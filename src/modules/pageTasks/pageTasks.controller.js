@@ -1,4 +1,5 @@
 const service = require('./pageTasks.service');
+const submissionsService = require('../pageSubmissions/pageSubmissions.service');
 const { sendSuccess } = require('../../utils/response');
 const { parsePagination, buildPaginationMeta } = require('../../utils/pagination');
 
@@ -56,4 +57,24 @@ const deleteTask = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
-module.exports = { listTasks, getTaskById, createTask, updateTask, updateTaskStatus, workflowAction, deleteTask };
+const createSubmission = async (req, res, next) => {
+  try {
+    const data = await submissionsService.submitTask(
+      req.user,
+      req.params.taskId,
+      req.body
+    );
+    return sendSuccess(res, 201, data, 'Submission created');
+  } catch (error) { next(error); }
+};
+
+module.exports = { 
+  listTasks, 
+  getTaskById, 
+  createTask, 
+  updateTask, 
+  updateTaskStatus, 
+  workflowAction, 
+  deleteTask,
+  createSubmission
+};

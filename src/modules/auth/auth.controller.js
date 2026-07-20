@@ -1,71 +1,22 @@
 const authService = require("./auth.service");
 const { sendSuccess } = require("../../utils/response");
 const AppError = require("../../utils/appError");
-const { OAuth2Client } = require("google-auth-library");
 
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL;
-
-if (!GOOGLE_CLIENT_ID) {
-  console.warn(
-    "⚠️ Missing GOOGLE_CLIENT_ID; Google login will be unavailable until it is configured",
-  );
-}
-
-const googleClient = GOOGLE_CLIENT_ID
-  ? new OAuth2Client(GOOGLE_CLIENT_ID)
-  : null;
-
-const verifyGoogleIdToken = async (idToken) => {
-  if (!GOOGLE_CLIENT_ID) {
-    throw new AppError("Google login is not configured on the server", 500);
-  }
-
-  const ticket = await googleClient.verifyIdToken({
-    idToken,
-    audience: GOOGLE_CLIENT_ID,
-  });
-
-  return ticket.getPayload();
+/** Cookie options for the HttpOnly refresh token cookie */
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'strict',
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
 };
 
-const exchangeGoogleCode = async (code, redirectUri) => {
-  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
-    throw new AppError("Google OAuth server configuration is incomplete", 500);
-  }
-
-  const response = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: new URLSearchParams({
-      code,
-      client_id: GOOGLE_CLIENT_ID,
-      client_secret: GOOGLE_CLIENT_SECRET,
-      redirect_uri: redirectUri || GOOGLE_CALLBACK_URL || "",
-      grant_type: "authorization_code",
-    }),
-  });
-
-  const tokenData = await response.json();
-  if (!response.ok || !tokenData.id_token) {
-    throw new AppError("Failed to exchange Google authorization code", 400);
-  }
-
-  const ticket = await googleClient.verifyIdToken({
-    idToken: tokenData.id_token,
-    audience: GOOGLE_CLIENT_ID,
-  });
-
-  return ticket.getPayload();
-};
+/** Helper to extract refresh token from incoming request cookie */
+const getRefreshTokenFromCookie = (req) => req.cookies?.refreshToken;
 
 const register = async (req, res, next) => {
   try {
     const data = await authService.register(req.body);
-    return sendSuccess(res, 201, data, "Registered successfully");
+    return sendSuccess(res, 201, data, "OTP sent successfully");
   } catch (error) {
     next(error);
   }
@@ -73,8 +24,9 @@ const register = async (req, res, next) => {
 
 const login = async (req, res, next) => {
   try {
-    const data = await authService.login(req.body);
-    return sendSuccess(res, 200, data, "Login successful");
+    const { token, refreshToken, user } = await authService.login(req.body);
+    res.cookie('refreshToken', refreshToken, COOKIE_OPTIONS);
+    return sendSuccess(res, 200, { token, user }, "Login successful");
   } catch (error) {
     next(error);
   }
@@ -87,9 +39,9 @@ const loginWithGoogle = async (req, res, next) => {
     let payload;
     try {
       if (idToken) {
-        payload = await verifyGoogleIdToken(idToken);
+        payload = await authService.verifyGoogleIdToken(idToken);
       } else if (code) {
-        payload = await exchangeGoogleCode(code, redirectUri);
+        payload = await authService.exchangeGoogleCode(code, redirectUri);
       } else {
         return next(new AppError("Either idToken or code is required", 400));
       }
@@ -108,21 +60,37 @@ const loginWithGoogle = async (req, res, next) => {
       return next(new AppError("Google email must be verified", 400));
     }
 
-    const data = await authService.loginWithGoogle({
+    const { token, refreshToken, user } = await authService.loginWithGoogle({
       email: payload.email,
       googleId: payload.sub,
       name: payload.name || payload.email.split("@")[0],
       avatar_url: payload.picture,
     });
 
-    return sendSuccess(res, 200, data, "Google login successful");
+    res.cookie('refreshToken', refreshToken, COOKIE_OPTIONS);
+    return sendSuccess(res, 200, { token, user }, "Google login successful");
   } catch (error) {
     next(error);
   }
 };
 
-const logout = (req, res) => {
-  return sendSuccess(res, 200, null, "Logged out successfully");
+const logout = async (req, res, next) => {
+  try {
+    const refreshToken = getRefreshTokenFromCookie(req);
+    await authService.logout(refreshToken);
+    res.clearCookie('refreshToken', COOKIE_OPTIONS);
+    return sendSuccess(res, 200, null, "Logged out successfully");
+  } catch (error) { next(error); }
+};
+
+const refresh = async (req, res, next) => {
+  try {
+    const refreshToken = getRefreshTokenFromCookie(req);
+    if (!refreshToken) return next(new AppError('Refresh token cookie is missing', 401));
+    const { token, refreshToken: newRefreshToken, user } = await authService.refresh(refreshToken);
+    res.cookie('refreshToken', newRefreshToken, COOKIE_OPTIONS);
+    return sendSuccess(res, 200, { token, user }, 'Token refreshed');
+  } catch (error) { next(error); }
 };
 
 const getMe = async (req, res, next) => {
@@ -143,11 +111,69 @@ const changePassword = async (req, res, next) => {
   }
 };
 
+const forgotPassword = async (req, res, next) => {
+  try {
+    await authService.sendPasswordResetOtp(req.body.email);
+    return sendSuccess(
+      res,
+      200,
+      null,
+      "Password reset OTP has been sent to your email",
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+const verifyPasswordOtp = async (req, res, next) => {
+  try {
+    await authService.verifyPasswordResetOtp(req.body.email, req.body.otp);
+    return sendSuccess(res, 200, null, "OTP verified successfully");
+  } catch (error) {
+    next(error);
+  }
+};
+
+const resetPassword = async (req, res, next) => {
+  try {
+    await authService.resetPassword(req.body);
+    return sendSuccess(res, 200, null, "Password reset successfully");
+  } catch (error) {
+    next(error);
+  }
+};
+
+const verifyRegisterOtp = async (req, res, next) => {
+  try {
+    const { email, otp } = req.body;
+    const { token, refreshToken, user } = await authService.verifyRegisterOtp(email, otp);
+    res.cookie('refreshToken', refreshToken, COOKIE_OPTIONS);
+    return sendSuccess(res, 200, { token, user }, "OTP verified successfully. Registration complete");
+  } catch (error) {
+    next(error);
+  }
+};
+
+const resendRegisterOtp = async (req, res, next) => {
+  try {
+    await authService.resendRegisterOtp(req.body.email);
+    return sendSuccess(res, 200, null, "Registration OTP has been resent");
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   register,
+  verifyRegisterOtp,
+  resendRegisterOtp,
   login,
   loginWithGoogle,
   logout,
+  refresh,
   getMe,
   changePassword,
+  forgotPassword,
+  verifyPasswordOtp,
+  resetPassword,
 };

@@ -80,7 +80,7 @@ const taskWorkflow = (action) => async (req, res, next) => {
 const createSubmission = async (req, res, next) => {
   try {
     const data = await submissionsService.submitTask(
-      req.user.user_id,
+      req.user,
       req.params.taskId,
       req.body,
     );

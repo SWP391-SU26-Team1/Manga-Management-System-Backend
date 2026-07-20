@@ -51,6 +51,12 @@ router.patch(
   "/page-tasks/:taskId/start-review",
   ctrl.taskWorkflow("start-review"),
 );
+// Place bulk routes before dynamic :taskId routes to avoid route conflict
+router.patch("/page-tasks/bulk/approve", ctrl.bulkApproveTasks);
+router.patch("/page-tasks/bulk/reject", ctrl.bulkRejectTasks);
+router.patch("/page-tasks/bulk/request-revision", ctrl.bulkRequestRevision);
+router.patch("/page-tasks/bulk/status", ctrl.bulkUpdateTaskStatus);
+
 router.patch("/page-tasks/:taskId/approve", ctrl.taskWorkflow("approve"));
 router.patch(
   "/page-tasks/:taskId/request-revision",
@@ -62,10 +68,6 @@ router.patch(
   "/page-tasks/:taskId/override-status",
   ctrl.taskWorkflow("override-status"),
 );
-router.patch("/page-tasks/bulk/approve", ctrl.bulkApproveTasks);
-router.patch("/page-tasks/bulk/reject", ctrl.bulkRejectTasks);
-router.patch("/page-tasks/bulk/request-revision", ctrl.bulkRequestRevision);
-router.patch("/page-tasks/bulk/status", ctrl.bulkUpdateTaskStatus);
 
 // Review Manuscripts
 router.get("/review/manuscripts/pending", (req, res, next) => {

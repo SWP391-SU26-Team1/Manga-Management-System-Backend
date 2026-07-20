@@ -1,0 +1,105 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Get Google idToken (Demo)</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+      body {
+        font-family:
+          system-ui,
+          Segoe UI,
+          Roboto,
+          Helvetica,
+          Arial;
+        margin: 24px;
+      }
+      #token {
+        white-space: break-spaces;
+        background: #f6f8fa;
+        padding: 12px;
+        border-radius: 6px;
+        border: 1px solid #e1e4e8;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Demo: Obtain Google idToken</h2>
+    <p>Steps:</p>
+    <ol>
+      <li>
+        Create OAuth 2.0 Client ID in Google Cloud Console (Application type:
+        <strong>Web application</strong>).
+      </li>
+      <li>
+        Add an authorized origin like <code>http://localhost</code> (for local
+        file testing you may use the <em>popup</em> method below).
+      </li>
+      <li>
+        Copy your <strong>Client ID</strong> and paste below where indicated.
+      </li>
+    </ol>
+
+    <label
+      >Google Client ID:
+      <input
+        id="clientId"
+        style="width: 420px"
+        placeholder="Paste GOOGLE_CLIENT_ID here"
+    /></label>
+    <div style="margin-top: 12px">
+      <button id="initBtn">Initialize</button>
+      <button id="clearBtn">Clear token</button>
+    </div>
+
+    <div id="gsi_button" style="margin-top: 18px"></div>
+
+    <h3>idToken (copy this)</h3>
+    <pre id="token">(no token yet)</pre>
+
+    <script>
+      let clientInitialized = false;
+
+      document.getElementById("initBtn").addEventListener("click", () => {
+        const clientId = document.getElementById("clientId").value.trim();
+        if (!clientId) {
+          alert("Please paste your Google Client ID");
+          return;
+        }
+        if (clientInitialized) {
+          alert("Already initialized");
+          return;
+        }
+
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          callback: handleCredentialResponse,
+          ux_mode: "popup",
+        });
+
+        window.google.accounts.id.renderButton(
+          document.getElementById("gsi_button"),
+          { theme: "outline", size: "large" },
+        );
+
+        clientInitialized = true;
+        alert(
+          "Initialized. Click the Sign in with Google button to get an idToken.",
+        );
+      });
+
+      document.getElementById("clearBtn").addEventListener("click", () => {
+        document.getElementById("token").textContent = "(no token yet)";
+      });
+
+      function handleCredentialResponse(response) {
+        // response.credential is the id_token
+        document.getElementById("token").textContent = response.credential;
+        // Also log for devtools
+        console.log("idToken:", response.credential);
+        alert("idToken captured and shown on page. Copy it for Swagger.");
+      }
+    </script>
+  </body>
+</html>

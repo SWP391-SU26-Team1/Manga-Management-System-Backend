@@ -11,6 +11,7 @@ const editorAlertsSvc = require("./editorAlerts.service");
 const editorReportsSvc = require("./editorReports.service");
 const editorProposalsSvc = require("./editorProposals.service");
 const editorTeamSvc = require("./editorTeam.service");
+const { createNotifications } = require("../../utils/notification.helper");
 const { sendSuccess } = require("../../utils/response");
 const {
   parsePagination,
@@ -25,6 +26,24 @@ const listSeries = async (req, res, next) => {
     const { page, limit, offset } = parsePagination(req.query);
     const { status, keyword } = req.query;
     let query = supabase.from("series").select("*", { count: "exact" });
+    if (req.user && req.user.role === 'editor' && !['pending_review', 'approved'].includes(status)) {
+      const { data: memberships } = await supabase
+        .from('series_member')
+        .select('series_id')
+        .eq('user_id', req.user.user_id)
+        .eq('role_in_series', 'editor');
+        
+      const seriesIds = (memberships || []).map(m => m.series_id);
+      if (seriesIds.length === 0) {
+        return res.status(200).json({
+          success: true,
+          message: "Success",
+          data: [],
+          pagination: buildPaginationMeta(page, limit, 0),
+        });
+      }
+      query = query.in('series_id', seriesIds);
+    }
     if (status) query = query.eq("status", status);
     if (keyword) query = query.ilike("title", `%${keyword}%`);
     query = query
@@ -32,14 +51,12 @@ const listSeries = async (req, res, next) => {
       .range(offset, offset + limit - 1);
     const { data, error, count } = await query;
     if (error) throw error;
-    return res
-      .status(200)
-      .json({
-        success: true,
-        message: "Success",
-        data,
-        pagination: buildPaginationMeta(page, limit, count),
-      });
+    return res.status(200).json({
+      success: true,
+      message: "Success",
+      data,
+      pagination: buildPaginationMeta(page, limit, count),
+    });
   } catch (e) {
     next(e);
   }
@@ -79,10 +96,58 @@ const updateSeries = async (req, res, next) => {
 
 const updateSeriesStatus = async (req, res, next) => {
   try {
+    const currentSeries = await seriesRepo.findById(req.params.seriesId);
+    if (!currentSeries) return next(new AppError("Series not found", 404));
+    // Kiểm tra xem editor có phải là người phụ trách series này hay không
+    if (req.user && req.user.role === 'editor') {
+      const isAlreadyAssigned = ['approved', 'published', 'in_production', 'hidden', 'archived'].includes(currentSeries.status);
+      if (isAlreadyAssigned) {
+        const { data: membership } = await supabase
+          .from('series_member')
+          .select('role_in_series')
+          .eq('series_id', req.params.seriesId)
+          .eq('user_id', req.user.user_id)
+          .maybeSingle();
+        if (!membership || membership.role_in_series !== 'editor') {
+          return next(new AppError("Access denied: you are not the assigned Tantou editor for this series", 403));
+        }
+      }
+    }
     const data = await seriesRepo.update(req.params.seriesId, {
       status: req.body.status,
       updated_at: new Date().toISOString(),
     });
+    // Gửi thông báo đến chủ sở hữu Series (Mangaka)
+    try {
+      const members = await seriesMembersRepo.findBySeriesId(req.params.seriesId);
+      const owners = (members || []).filter(m => m.role_in_series === 'owner');
+      if (owners.length > 0) {
+        let title = '';
+        let content = '';
+        let type = '';
+        if (req.body.status === 'approved') {
+          title = 'Series của bạn đã được phê duyệt';
+          content = `Tác phẩm "${data.title}" đã được duyệt bởi Tantou Editor và chuyển sang trạng thái Đang vẽ.`;
+          type = 'series_approved';
+        } else if (req.body.status === 'rejected' || req.body.status === 'draft') {
+          title = 'Series của bạn cần chỉnh sửa';
+          content = `Tác phẩm "${data.title}" đã bị từ chối duyệt hoặc yêu cầu chỉnh sửa hồ sơ.`;
+          type = 'series_rejected';
+        }
+        
+        if (title) {
+          const notifications = owners.map(o => ({
+            userId: o.user_id,
+            title,
+            content,
+            type
+          }));
+          await createNotifications(notifications);
+        }
+      }
+    } catch (err) {
+      console.error('[Notification Error] Failed to notify series owner on status update:', err);
+    }
     return sendSuccess(res, 200, data, "Status updated");
   } catch (e) {
     next(e);
@@ -91,6 +156,22 @@ const updateSeriesStatus = async (req, res, next) => {
 
 const seriesWorkflow = (status) => async (req, res, next) => {
   try {
+    const currentSeries = await seriesRepo.findById(req.params.seriesId);
+    if (!currentSeries) return next(new AppError("Series not found", 404));
+    if (req.user && req.user.role === 'editor') {
+      const isAlreadyAssigned = ['approved', 'published', 'in_production', 'hidden', 'archived'].includes(currentSeries.status);
+      if (isAlreadyAssigned) {
+        const { data: membership } = await supabase
+          .from('series_member')
+          .select('role_in_series')
+          .eq('series_id', req.params.seriesId)
+          .eq('user_id', req.user.user_id)
+          .maybeSingle();
+        if (!membership || membership.role_in_series !== 'editor') {
+          return next(new AppError("Access denied: you are not the assigned Tantou editor for this series", 403));
+        }
+      }
+    }
     const data = await seriesRepo.update(req.params.seriesId, {
       status,
       updated_at: new Date().toISOString(),
@@ -238,14 +319,12 @@ const listReviewTasks = async (req, res, next) => {
       offset,
       limit,
     });
-    return res
-      .status(200)
-      .json({
-        success: true,
-        message: "Success",
-        data,
-        pagination: buildPaginationMeta(page, limit, total),
-      });
+    return res.status(200).json({
+      success: true,
+      message: "Success",
+      data,
+      pagination: buildPaginationMeta(page, limit, total),
+    });
   } catch (e) {
     next(e);
   }
@@ -358,15 +437,14 @@ const listReviewManuscripts = async (req, res, next) => {
       chapterId: chapter_id,
       offset,
       limit,
+      requestingUser: req.user,
     });
-    return res
-      .status(200)
-      .json({
-        success: true,
-        message: "Success",
-        data,
-        pagination: buildPaginationMeta(page, limit, total),
-      });
+    return res.status(200).json({
+      success: true,
+      message: "Success",
+      data,
+      pagination: buildPaginationMeta(page, limit, total),
+    });
   } catch (e) {
     next(e);
   }
@@ -567,27 +645,32 @@ const getFeedbacks = async (req, res, next) => {
   try {
     const { page, limit, offset } = parsePagination(req.query);
     const { page_id, submission_id } = req.query;
-    
+
     // Base query with relationships
     let query = supabase
-      .from('page_task_feedback')
-      .select('*,submission:submission_id(submission_id,submission_status,page_id)', { count: 'exact' });
-    
+      .from("page_task_feedback")
+      .select(
+        "*,submission:submission_id(submission_id,submission_status,page_id)",
+        { count: "exact" },
+      );
+
     if (page_id) {
-      query = query.eq('submission.page_id', page_id);
+      query = query.eq("submission.page_id", page_id);
     }
-    
+
     if (submission_id) {
-      query = query.eq('submission_id', submission_id);
+      query = query.eq("submission_id", submission_id);
     }
-    
-    query = query.order('created_at', { ascending: false }).range(offset, offset + limit - 1);
+
+    query = query
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
     const { data, error, count } = await query;
     if (error) throw error;
-    
+
     return res.status(200).json({
       success: true,
-      message: 'Success',
+      message: "Success",
       data,
       pagination: buildPaginationMeta(page, limit, count),
     });
@@ -652,14 +735,12 @@ const listReviewSessions = async (req, res, next) => {
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
     if (error) throw error;
-    return res
-      .status(200)
-      .json({
-        success: true,
-        message: "Success",
-        data,
-        pagination: buildPaginationMeta(page, limit, count),
-      });
+    return res.status(200).json({
+      success: true,
+      message: "Success",
+      data,
+      pagination: buildPaginationMeta(page, limit, count),
+    });
   } catch (e) {
     next(e);
   }
@@ -895,14 +976,12 @@ const listNotifications = async (req, res, next) => {
       .range(offset, offset + limit - 1);
     const { data, error, count } = await query;
     if (error) throw error;
-    return res
-      .status(200)
-      .json({
-        success: true,
-        message: "Success",
-        data,
-        pagination: buildPaginationMeta(page, limit, count),
-      });
+    return res.status(200).json({
+      success: true,
+      message: "Success",
+      data,
+      pagination: buildPaginationMeta(page, limit, count),
+    });
   } catch (e) {
     next(e);
   }
@@ -925,11 +1004,12 @@ const getUnreadNotifications = async (req, res, next) => {
 
 const markNotificationRead = async (req, res, next) => {
   try {
-    await supabase
+    const { data, error } = await supabase
       .from("notification")
       .update({ is_read: true })
       .eq("notification_id", req.params.notificationId)
       .eq("user_id", req.user.user_id);
+    if (error) throw error;
     return sendSuccess(res, 200, null, "Marked as read");
   } catch (e) {
     next(e);
@@ -938,11 +1018,12 @@ const markNotificationRead = async (req, res, next) => {
 
 const markAllRead = async (req, res, next) => {
   try {
-    await supabase
+    const { data, error } = await supabase
       .from("notification")
       .update({ is_read: true })
       .eq("user_id", req.user.user_id)
       .eq("is_read", false);
+    if (error) throw error;
     return sendSuccess(res, 200, null, "All marked as read");
   } catch (e) {
     next(e);
@@ -951,11 +1032,12 @@ const markAllRead = async (req, res, next) => {
 
 const deleteNotification = async (req, res, next) => {
   try {
-    await supabase
+    const { data, error } = await supabase
       .from("notification")
       .delete()
       .eq("notification_id", req.params.notificationId)
       .eq("user_id", req.user.user_id);
+    if (error) throw error;
     return sendSuccess(res, 200, null, "Deleted");
   } catch (e) {
     next(e);

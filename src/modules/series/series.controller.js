@@ -1,12 +1,13 @@
 const seriesService = require('./series.service');
+const commentsService = require('../comments/comments.service');
 const { sendSuccess } = require('../../utils/response');
 const { parsePagination, buildPaginationMeta } = require('../../utils/pagination');
 
 const listSeries = async (req, res, next) => {
   try {
     const { page, limit, offset } = parsePagination(req.query);
-    const { status, genre, keyword, sort, order } = req.query;
-    const { data, total } = await seriesService.listSeries({ status, genre, keyword, page, limit, offset, sort, order });
+    const { status, genre, keyword, user_id, sort, order } = req.query;
+    const { data, total } = await seriesService.listSeries({ status, genre, keyword, user_id, page, limit, offset, sort, order });
     return res.status(200).json({ success: true, message: 'Success', data, pagination: buildPaginationMeta(page, limit, total) });
   } catch (error) {
     next(error);
@@ -58,6 +59,21 @@ const updateSeriesStatus = async (req, res, next) => {
   }
 };
 
+const listSeriesComments = async (req, res, next) => {
+  try {
+    const { page, limit, offset } = parsePagination(req.query);
+    const { data, total } = await commentsService.listCommentsBySeries({
+      seriesId: req.params.seriesId,
+      page,
+      limit,
+      offset,
+    });
+    return res.status(200).json({ success: true, message: 'Success', data, pagination: buildPaginationMeta(page, limit, total) });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const deleteSeries = async (req, res, next) => {
   try {
     await seriesService.deleteSeries(req.params.seriesId);
@@ -67,4 +83,13 @@ const deleteSeries = async (req, res, next) => {
   }
 };
 
-module.exports = { listSeries, getSeriesById, getSeriesDetail, createSeries, updateSeries, updateSeriesStatus, deleteSeries };
+module.exports = {
+  listSeries,
+  getSeriesById,
+  getSeriesDetail,
+  createSeries,
+  updateSeries,
+  updateSeriesStatus,
+  deleteSeries,
+  listSeriesComments,
+};

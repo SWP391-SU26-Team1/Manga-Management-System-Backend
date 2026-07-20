@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Assistant Testbed — Manga Management</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+    :root {
+      --bg: #0d0f1a;
+      --surface: #161929;
+      --surface2: #1e2236;
+      --border: #2a3050;
+      --primary: #7c6ef7;
+      --primary-hover: #9b8fff;
+      --accent: #f7c26e;
+      --success: #4ade80;
+      --danger: #f87171;
+      --warning: #fbbf24;
+      --text: #e8eaf6;
+      --text-muted: #8891b4;
+      --radius: 12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: linear-gradient(135deg, #1a1040 0%, #0d1526 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .logo { font-size: 1.25rem; font-weight: 700; color: var(--primary); letter-spacing: -0.5px; }
+    .logo span { color: var(--accent); }
+    #user-badge {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 999px; padding: 6px 14px 6px 8px;
+      font-size: 0.85rem;
+    }
+    #user-badge .avatar {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.75rem; font-weight: 700; color: #fff;
+    }
+
+    /* ── LOGIN SCREEN ── */
+    #login-screen {
+      display: flex; align-items: center; justify-content: center;
+      min-height: calc(100vh - 65px); padding: 24px;
+    }
+    .login-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px; padding: 40px;
+      width: 100%; max-width: 420px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+    .login-card h2 { font-size: 1.5rem; margin-bottom: 6px; }
+    .login-card p { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 28px; }
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; letter-spacing: 0.5px; text-transform: uppercase; }
+    input[type="email"], input[type="password"] {
+      width: 100%; padding: 10px 14px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); font-size: 0.9rem;
+      outline: none; transition: border 0.2s;
+    }
+    input:focus { border-color: var(--primary); }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 10px 20px; border-radius: 8px; font-size: 0.9rem;
+      font-weight: 600; cursor: pointer; border: none; transition: all 0.2s;
+    }
+    .btn-primary { background: var(--primary); color: #fff; width: 100%; margin-top: 8px; }
+    .btn-primary:hover { background: var(--primary-hover); transform: translateY(-1px); }
+    .quick-login { display: flex; gap: 8px; margin-top: 20px; }
+    .ql-btn {
+      flex: 1; padding: 8px; border-radius: 8px; cursor: pointer; font-size: 0.8rem;
+      font-weight: 600; border: 1px solid var(--border); background: var(--surface2);
+      color: var(--text); transition: all 0.2s;
+    }
+    .ql-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .divider { text-align: center; color: var(--text-muted); font-size: 0.8rem; margin: 16px 0; }
+
+    /* ── MAIN APP ── */
+    #app-screen { display: none; }
+    .app-layout { display: grid; grid-template-columns: 260px 1fr; min-height: calc(100vh - 65px); }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      background: var(--surface); border-right: 1px solid var(--border); padding: 24px 16px;
+    }
+    .sidebar h3 { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; padding: 0 8px; }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border-radius: 8px; cursor: pointer;
+      font-size: 0.9rem; font-weight: 500; margin-bottom: 4px;
+      transition: all 0.2s; color: var(--text-muted);
+    }
+    .nav-item:hover, .nav-item.active { background: rgba(124,110,247,0.15); color: var(--primary); }
+    .nav-item .icon { font-size: 1.1rem; }
+    .sidebar-logout {
+      margin-top: auto; padding: 10px 12px; border-radius: 8px; cursor: pointer;
+      font-size: 0.85rem; font-weight: 500; color: var(--danger);
+      border: 1px solid transparent; transition: all 0.2s; margin-top: 24px;
+    }
+    .sidebar-logout:hover { background: rgba(248,113,113,0.1); border-color: var(--danger); }
+
+    /* ── MAIN CONTENT ── */
+    .main { padding: 28px; overflow-y: auto; }
+    .section { display: none; }
+    .section.active { display: block; }
+    .section-title { font-size: 1.4rem; font-weight: 700; margin-bottom: 4px; }
+    .section-sub { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 24px; }
+
+    /* ── PANEL DETECTION ── */
+    .pd-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px;
+    }
+    .card h4 { font-size: 0.9rem; font-weight: 600; margin-bottom: 14px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .input-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+    input[type="text"], textarea, select {
+      width: 100%; padding: 9px 12px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); font-size: 0.875rem;
+      outline: none; transition: border 0.2s; font-family: inherit;
+    }
+    input[type="text"]:focus, textarea:focus, select:focus { border-color: var(--primary); }
+    textarea { min-height: 80px; resize: vertical; }
+    select option { background: var(--surface2); }
+
+    .run-btn {
+      width: 100%; padding: 11px; border-radius: 8px; font-size: 0.9rem;
+      font-weight: 700; cursor: pointer; border: none;
+      background: linear-gradient(135deg, var(--primary), #a78bfa);
+      color: #fff; letter-spacing: 0.3px; transition: all 0.2s;
+    }
+    .run-btn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+    .run-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* Status badge */
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 12px; border-radius: 999px; font-size: 0.8rem; font-weight: 600;
+    }
+    .status-processing { background: rgba(251,191,36,0.15); color: var(--warning); border: 1px solid rgba(251,191,36,0.3); }
+    .status-completed  { background: rgba(74,222,128,0.15); color: var(--success); border: 1px solid rgba(74,222,128,0.3); }
+    .status-failed     { background: rgba(248,113,113,0.15); color: var(--danger); border: 1px solid rgba(248,113,113,0.3); }
+
+    /* Canvas */
+    .canvas-wrapper {
+      position: relative; background: #000; border-radius: 8px; overflow: hidden;
+      border: 1px solid var(--border); min-height: 300px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .canvas-wrapper canvas { display: block; width: 100%; height: auto; }
+    .canvas-placeholder {
+      color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 40px;
+    }
+
+    /* Polling log */
+    .log-box {
+      background: #0a0c14; border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px; font-family: 'Courier New', monospace;
+      font-size: 0.78rem; color: #7dd3fc; min-height: 90px; max-height: 160px;
+      overflow-y: auto; margin-top: 12px;
+    }
+    .log-line { margin-bottom: 2px; }
+    .log-line.ok { color: var(--success); }
+    .log-line.err { color: var(--danger); }
+    .log-line.warn { color: var(--warning); }
+
+    /* Action buttons */
+    .action-row { display: flex; gap: 10px; margin-top: 14px; }
+    .btn-success { background: var(--success); color: #052e16; font-weight: 700; flex: 1; }
+    .btn-success:hover:not(:disabled) { opacity: 0.85; }
+    .btn-danger  { background: var(--danger);  color: #fff; font-weight: 700; flex: 1; }
+    .btn-danger:hover:not(:disabled)  { opacity: 0.85; }
+    .btn-success:disabled, .btn-danger:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    /* Smart Coloring */
+    .sc-result-img { width: 100%; border-radius: 8px; border: 1px solid var(--border); margin-top: 10px; display: none; }
+
+    /* panels info */
+    .panels-info { margin-top: 10px; font-size: 0.82rem; color: var(--text-muted); }
+    .panels-info strong { color: var(--accent); }
+
+    @media (max-width: 900px) {
+      .app-layout { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .pd-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🎌 Manga<span>AI</span> Testbed</div>
+  <div id="user-badge" style="display:none">
+    <div class="avatar" id="avatar-initial">?</div>
+    <span id="user-label">Loading...</span>
+  </div>
+</header>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <h2>🔐 Đăng nhập</h2>
+    <p>Đăng nhập để kiểm thử AI Assistant API</p>
+
+    <div class="divider">⚡ Đăng nhập nhanh</div>
+    <div class="quick-login">
+      <button class="ql-btn" onclick="quickLogin('admin')">👑 Admin</button>
+      <button class="ql-btn" onclick="quickLogin('mangaka')">🎨 Mangaka</button>
+      <button class="ql-btn" onclick="quickLogin('assistant')">🖊️ Assistant</button>
+    </div>
+
+    <div class="divider">— hoặc —</div>
+
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="email@example.com" />
+    </div>
+    <div class="form-group">
+      <label>Mật khẩu</label>
+      <input type="password" id="login-password" placeholder="••••••••" />
+    </div>
+    <button class="btn btn-primary" onclick="doLogin()">Đăng nhập</button>
+    <div id="login-error" style="color:var(--danger);font-size:0.85rem;margin-top:10px;text-align:center;"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-screen">
+  <div class="app-layout">
+    <div class="sidebar">
+      <h3>AI Features</h3>
+      <div class="nav-item active" id="nav-pd" onclick="switchSection('pd')">
+        <span class="icon">🎯</span> Panel Detection
+      </div>
+      <div class="nav-item" id="nav-sc" onclick="switchSection('sc')">
+        <span class="icon">🎨</span> Smart Coloring
+      </div>
+      <div class="sidebar-logout" onclick="doLogout()">🚪 Đăng xuất</div>
+    </div>
+
+    <div class="main">
+
+      <!-- ═══ PANEL DETECTION ═══ -->
+      <div class="section active" id="section-pd">
+        <div class="section-title">🎯 Panel Detection</div>
+        <div class="section-sub">Nhận diện khung tranh manga tự động bằng Groq Vision AI</div>
+
+        <div class="pd-grid">
+          <!-- Left: Controls -->
+          <div class="card">
+            <h4>Cấu hình</h4>
+            <div class="input-row">
+              <label>Page ID (UUID)</label>
+              <input type="text" id="pd-page-id" placeholder="ecb1ee6e-e5dc-4709-87a4-0a4fb0412415" />
+            </div>
+            <div class="input-row">
+              <label>Custom Prompt (tuỳ chọn)</label>
+              <textarea id="pd-prompt" placeholder="Để trống để dùng prompt mặc định..."></textarea>
+            </div>
+            <div class="input-row">
+              <label>Model</label>
+              <select id="pd-model">
+                <option value="">Mặc định (Llama 3.2 Vision 11B)</option>
+                <option value="llama-3.2-11b-vision-preview">Llama 3.2 Vision 11B</option>
+                <option value="llama-3.2-90b-vision-preview">Llama 3.2 Vision 90B</option>
+              </select>
+            </div>
+            <button class="run-btn" id="pd-run-btn" onclick="runPanelDetection()">🚀 Bắt đầu nhận diện</button>
+
+            <div class="log-box" id="pd-log"><span class="log-line">Sẵn sàng...</span></div>
+
+            <div class="action-row">
+              <button class="btn btn-success" id="pd-save-btn" disabled onclick="savePanels()">💾 Lưu phân vùng</button>
+              <button class="btn btn-danger"  id="pd-reject-btn" disabled onclick="rejectSuggestion('pd')">✗ Từ chối</button>
+            </div>
+            <div class="panels-info" id="pd-panels-info"></div>
+          </div>
+
+          <!-- Right: Canvas -->
+          <div class="card">
+            <h4>Kết quả — Bounding Boxes</h4>
+            <div id="pd-status-row" style="margin-bottom:10px;"></div>
+            <div class="canvas-wrapper" id="pd-canvas-wrapper">
+              <div class="canvas-placeholder" id="pd-placeholder">
+                Chạy Panel Detection để xem kết quả tại đây
+              </div>
+              <canvas id="pd-canvas" style="display:none;"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ SMART COLORING ═══ -->
+      <div class="section" id="section-sc">
+        <div class="section-title">🎨 Smart Coloring</div>
+        <div class="section-sub">Tô màu trang manga tự động bằng HuggingFace AI</div>
+
+        <div class="pd-grid">
+          <!-- Left: Controls -->
+          <div class="card">
+            <h4>Cấu hình</h4>
+            <div class="input-row">
+              <label>Task ID (UUID)</label>
+              <input type="text" id="sc-task-id" placeholder="task UUID..." />
+            </div>
+            <div class="input-row">
+              <label>Phong cách màu sắc</label>
+              <textarea id="sc-prompt" placeholder="Ví dụ: anime style, vibrant colors, soft lighting..."></textarea>
+            </div>
+            <div class="input-row">
+              <label>Model</label>
+              <select id="sc-model">
+                <option value="">Mặc định (Stable Diffusion 3)</option>
+                <option value="stabilityai/stable-diffusion-3-medium-diffusers">Stable Diffusion 3 Medium</option>
+                <option value="sharky172/manga-light-colorizer">AI Manga Colorizer (Tự động tô & Giữ nét tốt nhất)</option>
+                <option value="black-forest-labs/FLUX.1-schnell">FLUX.1-schnell (Không còn hoạt động)</option>
+              </select>
+            </div>
+            <button class="run-btn" id="sc-run-btn" onclick="runSmartColoring()">🚀 Bắt đầu tô màu</button>
+
+            <div class="log-box" id="sc-log"><span class="log-line">Sẵn sàng...</span></div>
+
+            <div class="action-row">
+              <button class="btn btn-success" id="sc-submit-btn" disabled onclick="submitColoring()">📤 Nộp kết quả AI</button>
+              <button class="btn btn-danger"  id="sc-reject-btn" disabled onclick="rejectSuggestion('sc')">✗ Từ chối</button>
+            </div>
+          </div>
+
+          <!-- Right: Preview -->
+          <div class="card">
+            <h4>Kết quả — Ảnh tô màu</h4>
+            <div id="sc-status-row" style="margin-bottom:10px;"></div>
+            <div class="canvas-wrapper" id="sc-canvas-wrapper">
+              <div class="canvas-placeholder" id="sc-placeholder">
+                Chạy Smart Coloring để xem kết quả tại đây
+              </div>
+              <img id="sc-result-img" class="sc-result-img" alt="AI Coloring Result" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /main -->
+  </div><!-- /app-layout -->
+</div><!-- /app-screen -->
+
+<script>
+const BASE = window.location.origin;
+let token = null;
+let currentUser = null;
+
+// ─── State ───
+const state = {
+  pd: { suggestionId: null, panels: [], imageUrl: null },
+  sc: { suggestionId: null, imageUrl: null },
+};
+
+// ─── Quick logins (update credentials here) ───
+const QUICK_CREDS = {
+  admin:     { email: 'admin@example.com',     password: 'Admin@123456' },
+  mangaka:   { email: 'mangaka@example.com',   password: 'Mangaka@123456' },
+  assistant: { email: 'assistant@example.com', password: 'Assistant@123456' },
+};
+
+async function quickLogin(role) {
+  const creds = QUICK_CREDS[role];
+  document.getElementById('login-email').value = creds.email;
+  document.getElementById('login-password').value = creds.password;
+  await doLogin();
+}
+
+async function doLogin() {
+  const email    = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl    = document.getElementById('login-error');
+  errEl.textContent = '';
+  if (!email || !password) { errEl.textContent = 'Vui lòng nhập email và mật khẩu'; return; }
+
+  try {
+    const res  = await fetch(`${BASE}/api/auth/login`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.message || 'Đăng nhập thất bại');
+
+    token = body.data?.token;
+    currentUser = body.data?.user;
+    showApp();
+  } catch(e) {
+    errEl.textContent = `❌ ${e.message}`;
+  }
+}
+
+function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-screen').style.display   = 'block';
+  const badge = document.getElementById('user-badge');
+  badge.style.display = 'flex';
+  document.getElementById('avatar-initial').textContent = (currentUser?.username || '?')[0].toUpperCase();
+  document.getElementById('user-label').textContent = `${currentUser?.username || 'User'} · ${currentUser?.role || ''}`;
+}
+
+function doLogout() {
+  token = null; currentUser = null;
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app-screen').style.display   = 'none';
+  document.getElementById('user-badge').style.display   = 'none';
+}
+
+function switchSection(id) {
+  ['pd','sc'].forEach(s => {
+    document.getElementById(`section-${s}`).classList.toggle('active', s === id);
+    document.getElementById(`nav-${s}`).classList.toggle('active', s === id);
+  });
+}
+
+// ─── Logging ───
+function log(id, msg, type='') {
+  const box = document.getElementById(`${id}-log`);
+  const line = document.createElement('div');
+  line.className = `log-line ${type}`;
+  line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
+}
+function clearLog(id) {
+  document.getElementById(`${id}-log`).innerHTML = '';
+}
+
+// ─── Status badge ───
+function setStatus(id, status) {
+  const map = {
+    processing: ['status-processing','⏳ Đang xử lý (processing)'],
+    completed:  ['status-completed', '✅ Hoàn thành (completed)'],
+    failed:     ['status-failed',    '❌ Thất bại (failed)'],
+  };
+  const [cls, text] = map[status] || ['status-processing', status];
+  document.getElementById(`${id}-status-row`).innerHTML = `<span class="status-badge ${cls}">${text}</span>`;
+}
+
+// ─── Polling with Exponential Backoff ───
+async function pollSuggestion(logId, suggestionId, onComplete, onFail) {
+  const delays = [2000,4000,8000,10000,10000,10000,10000,10000,10000,10000];
+  for (let i = 0; i < delays.length; i++) {
+    const wait = delays[i];
+    log(logId, `⏱ Chờ ${wait/1000}s rồi poll lần ${i+1}...`, 'warn');
+    await sleep(wait);
+
+    try {
+      const res  = await fetch(`${BASE}/api/ai/suggestions/${suggestionId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const body = await res.json();
+      const sug  = body.data;
+      log(logId, `Poll ${i+1}: status = ${sug?.status}`);
+
+      if (sug?.status === 'completed') { onComplete(sug); return; }
+      if (sug?.status === 'failed')    { onFail(sug.result_data?.error || 'AI failed'); return; }
+    } catch(e) {
+      log(logId, `❌ Poll error: ${e.message}`, 'err');
+    }
+  }
+  onFail('Timeout — AI không phản hồi sau nhiều lần thử');
+}
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// ════════════════════════════════
+//  PANEL DETECTION
+// ════════════════════════════════
+async function runPanelDetection() {
+  const pageId = document.getElementById('pd-page-id').value.trim();
+  const prompt = document.getElementById('pd-prompt').value.trim();
+  const model  = document.getElementById('pd-model').value;
+
+  if (!pageId) { alert('Vui lòng nhập Page ID'); return; }
+
+  clearLog('pd');
+  document.getElementById('pd-run-btn').disabled = true;
+  document.getElementById('pd-save-btn').disabled = true;
+  document.getElementById('pd-reject-btn').disabled = true;
+  document.getElementById('pd-panels-info').textContent = '';
+  hidePdCanvas();
+
+  log('pd', `🚀 Gửi request Panel Detection cho page: ${pageId}`);
+
+  try {
+    const body = {};
+    if (prompt) body.prompt = prompt;
+    if (model)  body.ai_model = model;
+
+    const res  = await fetch(`${BASE}/api/pages/${pageId}/ai/panel-detection`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.message || 'Request failed');
+
+    const suggestionId = json.data?.suggestion_id;
+    state.pd.suggestionId = suggestionId;
+    log('pd', `✅ Job tạo thành công. Suggestion ID: ${suggestionId}`, 'ok');
+    log('pd', '🔄 Bắt đầu polling...');
+    setStatus('pd', 'processing');
+
+    pollSuggestion('pd', suggestionId,
+      (sug) => onPdCompleted(sug, pageId),
+      (err) => { log('pd', `❌ Thất bại: ${err}`, 'err'); setStatus('pd','failed'); document.getElementById('pd-run-btn').disabled=false; }
+    );
+  } catch(e) {
+    log('pd', `❌ ${e.message}`, 'err');
+    document.getElementById('pd-run-btn').disabled = false;
+  }
+}
+
+async function onPdCompleted(sug, pageId) {
+  setStatus('pd','completed');
+  const panels = sug.result_data?.panels || [];
+  state.pd.panels = panels;
+  log('pd', `🎉 Nhận diện thành công! Tìm thấy ${panels.length} khung tranh.`, 'ok');
+
+  if (panels.length === 0) {
+    log('pd', '⚠️ AI không tìm thấy khung tranh nào trong ảnh.', 'warn');
+    document.getElementById('pd-run-btn').disabled = false;
+    return;
+  }
+
+  // Load image from the page API to draw on canvas
+  try {
+    const pRes  = await fetch(`${BASE}/api/pages/${pageId}`, { headers: { Authorization: `Bearer ${token}` } });
+    const pJson = await pRes.json();
+    const imgUrl = pJson.data?.image_url || pJson.data?.latest_version?.image_url;
+    state.pd.imageUrl = imgUrl;
+    if (imgUrl) {
+      await drawPanels(imgUrl, panels);
+    } else {
+      log('pd', '⚠️ Không lấy được image URL để vẽ. Đây là tọa độ panels:', 'warn');
+      panels.forEach((p,i) => log('pd', `  Panel ${i+1}: x=${p.x} y=${p.y} w=${p.width} h=${p.height}`));
+    }
+  } catch(e) {
+    log('pd', `⚠️ Không load được ảnh để vẽ: ${e.message}`, 'warn');
+    // Still show coords
+    panels.forEach((p,i) => log('pd', `  Panel ${i+1}: x=${p.x} y=${p.y} w=${p.width} h=${p.height}`));
+  }
+
+  document.getElementById('pd-panels-info').innerHTML = `<strong>${panels.length}</strong> khung tranh được nhận diện`;
+  document.getElementById('pd-save-btn').disabled   = false;
+  document.getElementById('pd-reject-btn').disabled = false;
+  document.getElementById('pd-run-btn').disabled    = false;
+}
+
+async function drawPanels(imgUrl, panels) {
+  const placeholder = document.getElementById('pd-placeholder');
+  const canvas      = document.getElementById('pd-canvas');
+  const ctx         = canvas.getContext('2d');
+  const wrapper     = document.getElementById('pd-canvas-wrapper');
+
+  placeholder.style.display = 'none';
+  canvas.style.display = 'block';
+
+  // Use a proxy via our backend to avoid CORS, or load directly
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+
+  await new Promise((resolve, reject) => {
+    img.onload = resolve;
+    img.onerror = reject;
+    img.src = imgUrl;
+  });
+
+  canvas.width  = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+
+  ctx.drawImage(img, 0, 0);
+
+  // Draw bounding boxes
+  const colors = ['#7c6ef7','#f7c26e','#4ade80','#f87171','#38bdf8','#fb7185','#a78bfa'];
+  panels.forEach((p, i) => {
+    const color = colors[i % colors.length];
+    ctx.strokeStyle = color;
+    ctx.lineWidth   = Math.max(2, img.naturalWidth / 300);
+    ctx.strokeRect(p.x, p.y, p.width, p.height);
+
+    // Label
+    const fontSize = Math.max(14, img.naturalWidth / 60);
+    ctx.font = `bold ${fontSize}px Inter, sans-serif`;
+    const label = `#${i+1}`;
+    const tw = ctx.measureText(label).width;
+    ctx.fillStyle = color;
+    ctx.fillRect(p.x, p.y - fontSize - 4, tw + 10, fontSize + 6);
+    ctx.fillStyle = '#fff';
+    ctx.fillText(label, p.x + 5, p.y - 4);
+  });
+
+  log('pd', `🖼️ Đã vẽ ${panels.length} bounding boxes lên ảnh.`, 'ok');
+}
+
+function hidePdCanvas() {
+  document.getElementById('pd-canvas').style.display   = 'none';
+  document.getElementById('pd-placeholder').style.display = 'flex';
+  document.getElementById('pd-status-row').innerHTML = '';
+}
+
+async function savePanels() {
+  const pageId = document.getElementById('pd-page-id').value.trim();
+  const { panels, suggestionId } = state.pd;
+  if (!panels.length) return;
+
+  const regions = panels.map((p, i) => ({
+    region_type: 'panel',
+    x: p.x, y: p.y, width: p.width, height: p.height,
+    order_index: i + 1,
+  }));
+
+  try {
+    document.getElementById('pd-save-btn').disabled = true;
+    log('pd', '💾 Đang lưu các phân vùng...');
+    const res  = await fetch(`${BASE}/api/pages/${pageId}/regions/bulk`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ regions, suggestion_id: suggestionId }),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.message || 'Save failed');
+    log('pd', `✅ Lưu thành công ${panels.length} phân vùng!`, 'ok');
+    document.getElementById('pd-reject-btn').disabled = true;
+  } catch(e) {
+    log('pd', `❌ Lỗi khi lưu: ${e.message}`, 'err');
+    document.getElementById('pd-save-btn').disabled = false;
+  }
+}
+
+// ════════════════════════════════
+//  SMART COLORING
+// ════════════════════════════════
+async function runSmartColoring() {
+  const taskId = document.getElementById('sc-task-id').value.trim();
+  const prompt = document.getElementById('sc-prompt').value.trim();
+  const model  = document.getElementById('sc-model').value;
+
+  if (!taskId) { alert('Vui lòng nhập Task ID'); return; }
+
+  clearLog('sc');
+  document.getElementById('sc-run-btn').disabled    = true;
+  document.getElementById('sc-submit-btn').disabled = true;
+  document.getElementById('sc-reject-btn').disabled = true;
+  document.getElementById('sc-result-img').style.display = 'none';
+  document.getElementById('sc-placeholder').style.display = 'flex';
+
+  log('sc', `🚀 Gửi request Smart Coloring cho task: ${taskId}`);
+
+  try {
+    const body = {};
+    if (prompt) body.prompt = prompt;
+    if (model)  body.ai_model = model;
+
+    const res  = await fetch(`${BASE}/api/page-tasks/${taskId}/ai/coloring`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.message || 'Request failed');
+
+    const suggestionId = json.data?.suggestion_id;
+    state.sc.suggestionId = suggestionId;
+    log('sc', `✅ Job tạo thành công. Suggestion ID: ${suggestionId}`, 'ok');
+    log('sc', '🔄 Bắt đầu polling...');
+    setStatus('sc','processing');
+
+    pollSuggestion('sc', suggestionId,
+      (sug) => onScCompleted(sug),
+      (err) => { log('sc', `❌ Thất bại: ${err}`, 'err'); setStatus('sc','failed'); document.getElementById('sc-run-btn').disabled=false; }
+    );
+  } catch(e) {
+    log('sc', `❌ ${e.message}`, 'err');
+    document.getElementById('sc-run-btn').disabled = false;
+  }
+}
+
+async function onScCompleted(sug) {
+  setStatus('sc','completed');
+  const imageUrl = sug.result_data?.image_url;
+  state.sc.imageUrl = imageUrl;
+  log('sc', '🎉 Tô màu thành công!', 'ok');
+
+  if (imageUrl) {
+    const img = document.getElementById('sc-result-img');
+    img.src = imageUrl;
+    img.style.display = 'block';
+    document.getElementById('sc-placeholder').style.display = 'none';
+    log('sc', `🖼️ Ảnh kết quả: ${imageUrl}`, 'ok');
+  }
+
+  document.getElementById('sc-submit-btn').disabled = false;
+  document.getElementById('sc-reject-btn').disabled = false;
+  document.getElementById('sc-run-btn').disabled    = false;
+}
+
+async function submitColoring() {
+  const taskId      = document.getElementById('sc-task-id').value.trim();
+  const { suggestionId, imageUrl } = state.sc;
+
+  try {
+    document.getElementById('sc-submit-btn').disabled = true;
+    log('sc', '📤 Đang nộp bài...');
+    const res  = await fetch(`${BASE}/api/page-tasks/${taskId}/submissions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ image_url: imageUrl, suggestion_id: suggestionId }),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.message || 'Submit failed');
+    log('sc', '✅ Nộp bài thành công!', 'ok');
+    document.getElementById('sc-reject-btn').disabled = true;
+  } catch(e) {
+    log('sc', `❌ Lỗi khi nộp: ${e.message}`, 'err');
+    document.getElementById('sc-submit-btn').disabled = false;
+  }
+}
+
+async function rejectSuggestion(type) {
+  const id = state[type].suggestionId;
+  if (!id) return;
+  try {
+    const res  = await fetch(`${BASE}/api/ai/suggestions/${id}/reject`, {
+      method: 'PATCH', headers: { Authorization: `Bearer ${token}` },
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.message);
+    log(type, '🗑️ Đã từ chối kết quả AI.', 'warn');
+    document.getElementById(`${type}-save-btn`   )?.setAttribute('disabled','');
+    document.getElementById(`${type}-submit-btn` )?.setAttribute('disabled','');
+    document.getElementById(`${type}-reject-btn` ).disabled = true;
+  } catch(e) {
+    log(type, `❌ ${e.message}`, 'err');
+  }
+}
+</script>
+</body>
+</html>

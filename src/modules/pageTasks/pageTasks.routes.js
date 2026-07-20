@@ -95,6 +95,7 @@ router.get('/', authenticateToken, validate(v.listTasksSchema), controller.listT
  *       200: { description: Deleted }
  */
 router.get('/:taskId', authenticateToken, validate(v.taskIdParamSchema), controller.getTaskById);
+router.post('/:taskId/submissions', authenticateToken, requireRole(['admin', 'assistant']), validate(v.createSubmissionSchema), controller.createSubmission);
 router.post('/', authenticateToken, requireRole(['admin', 'editor', 'mangaka']), validate(v.createTaskSchema), controller.createTask);
 router.patch('/:taskId', authenticateToken, requireRole(['admin', 'editor', 'mangaka']), validate(v.updateTaskSchema), controller.updateTask);
 router.patch('/:taskId/status', authenticateToken, requireRole(['admin', 'editor']), validate(v.updateTaskStatusSchema), controller.updateTaskStatus);

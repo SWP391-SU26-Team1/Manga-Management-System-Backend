@@ -9,6 +9,7 @@ const controller = require('./series.controller');
 router.get('/', validate(v.listSeriesSchema), controller.listSeries);
 router.get('/:seriesId', validate(v.seriesIdParamSchema), controller.getSeriesById);
 router.get('/:seriesId/detail', validate(v.seriesIdParamSchema), controller.getSeriesDetail);
+router.get('/:seriesId/comments', validate(v.listSeriesCommentsSchema), controller.listSeriesComments);
 router.post('/', authenticateToken, requireRole(['admin', 'mangaka']), validate(v.createSeriesSchema), controller.createSeries);
 router.patch('/:seriesId', authenticateToken, requireRole(['admin', 'mangaka']), validate(v.updateSeriesSchema), controller.updateSeries);
 router.patch('/:seriesId/status', authenticateToken, requireRole(['admin', 'editor']), validate(v.updateSeriesStatusSchema), controller.updateSeriesStatus);
