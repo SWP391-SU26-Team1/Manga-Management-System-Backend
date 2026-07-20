@@ -43,6 +43,15 @@ const getUserById = async (req, res, next) => {
   }
 };
 
+const requestRole = async (req, res, next) => {
+  try {
+    const data = await usersService.requestRole(req.user.user_id, req.body.role);
+    return sendSuccess(res, 200, data, "Role upgrade request sent successfully");
+  } catch (error) {
+    next(error);
+  }
+};
+
 const createUser = async (req, res, next) => {
   try {
     const data = await usersService.createUser(req.body);
@@ -92,6 +101,7 @@ const deleteUser = async (req, res, next) => {
 module.exports = {
   listUsers,
   getUserById,
+  requestRole,
   createUser,
   updateUser,
   updateUserStatus,

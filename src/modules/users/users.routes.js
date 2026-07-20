@@ -13,6 +13,12 @@ router.get(
   validate(v.listUsersSchema),
   controller.listUsers,
 );
+router.post(
+  "/request-role",
+  authenticateToken,
+  validate(v.requestRoleSchema),
+  controller.requestRole,
+);
 router.get(
   "/:userId",
   authenticateToken,
