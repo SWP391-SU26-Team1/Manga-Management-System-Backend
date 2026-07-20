@@ -1,4 +1,4 @@
-﻿const { z } = require("zod");
+const { z } = require("zod");
 const { USER_STATUS, USER_ROLES } = require("../../constants/status");
 
 const uuidParam = z.string().uuid({ message: "Invalid UUID" });
@@ -59,6 +59,12 @@ const listUsersSchema = z.object({
   }),
 });
 
+const requestRoleSchema = z.object({
+  body: z.object({
+    role: z.enum(["mangaka", "assistant", "board", "editor"]),
+  }),
+});
+
 module.exports = {
   createUserSchema,
   updateUserSchema,
@@ -66,4 +72,5 @@ module.exports = {
   updateUserRoleSchema,
   userIdParamSchema,
   listUsersSchema,
+  requestRoleSchema,
 };
