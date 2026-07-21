@@ -1,13 +1,4 @@
 const http = require('http');
-
-// === TEMPORARY DEBUG: Check env vars on Railway ===
-console.log('=== CHECK ENV TRÊN RAILWAY ===');
-console.log('SUPABASE_URL:              ', process.env.SUPABASE_URL ? '✅ Đã có' : '❌ BỊ THIẾU!');
-console.log('SUPABASE_SERVICE_ROLE_KEY: ', process.env.SUPABASE_SERVICE_ROLE_KEY ? '✅ Đã có' : '❌ BỊ THIẾU!');
-console.log('JWT_SECRET:                ', process.env.JWT_SECRET ? '✅ Đã có' : '❌ BỊ THIẾU!');
-console.log('CLOUDINARY_CLOUD_NAME:     ', process.env.CLOUDINARY_CLOUD_NAME ? '✅ Đã có' : '❌ BỊ THIẾU!');
-console.log('================================');
-
 const app = require('./app');
 const notificationSocket = require('./realtime/notification.socket');
 
@@ -44,7 +35,7 @@ const startServer = (port) => {
 
 startServer(DEFAULT_PORT);
 
-// Graceful shutdown for nodemon
+// Graceful shutdown
 process.once('SIGUSR2', () => {
   console.log('Nodemon restarting, exiting child process...');
   process.exit(0);
@@ -59,38 +50,3 @@ process.on('SIGTERM', () => {
   console.log('SIGTERM received, exiting...');
   process.exit(0);
 });
-
-// Windows nodemon fix: exit when stdin closes (parent process ends or restarts)
-process.stdin.on('close', () => {
-  console.log('stdin closed, exiting child process...');
-  process.exit(0);
-});
-process.stdin.resume();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
