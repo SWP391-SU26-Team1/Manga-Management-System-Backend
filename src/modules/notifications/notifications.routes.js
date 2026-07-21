@@ -11,6 +11,7 @@ router.get('/:notificationId', authenticateToken, validate(v.notificationIdParam
 router.post('/', authenticateToken, requireRole(['admin']), validate(v.createNotificationSchema), controller.createNotification);
 router.patch('/:notificationId', authenticateToken, validate(v.updateNotificationSchema), controller.updateNotification);
 router.patch('/:notificationId/read', authenticateToken, validate(v.notificationIdParamSchema), controller.markAsRead);
+router.patch('/:notificationId/acknowledge', authenticateToken, validate(v.notificationIdParamSchema), controller.acknowledgeNotification);
 router.delete('/:notificationId', authenticateToken, validate(v.notificationIdParamSchema), controller.deleteNotification);
 
 module.exports = router;

@@ -67,9 +67,36 @@ const performWorkflow = async (chapterId, seriesId, action) => {
   const chapter = await getChapterById(chapterId, seriesId);
   const rule = WORKFLOW[action];
   if (!rule) throw new AppError('Unknown workflow action', 400);
-  if (!rule.from.includes(chapter.status))
+  
+  const allowedFrom = action === 'submit-review'
+    ? ['draft', 'rejected', 'approved', 'pending_review', 'need_fix']
+    : rule.from;
+
+  if (!allowedFrom.includes(chapter.status))
     throw new AppError(`Cannot perform '${action}' from status '${chapter.status}'`, 400);
-  return chaptersRepo.update(chapterId, { status: rule.to, updated_at: new Date().toISOString() });
+
+  const result = await chaptersRepo.update(chapterId, { status: rule.to, updated_at: new Date().toISOString() });
+
+  if (action === 'submit-review') {
+    const { data: pages } = await supabase
+      .from('page')
+      .select('page_id')
+      .eq('chapter_id', chapterId);
+      
+    if (pages && pages.length > 0) {
+      const pageIds = pages.map(p => p.page_id);
+      await supabase
+        .from('page')
+        .update({ status: 'completed' })
+        .in('page_id', pageIds);
+      await supabase
+        .from('page_task')
+        .update({ status: 'completed' })
+        .in('page_id', pageIds);
+    }
+  }
+
+  return result;
 };
 
 const copyFromChapter = async (seriesId, sourceChapterId, payload) => {

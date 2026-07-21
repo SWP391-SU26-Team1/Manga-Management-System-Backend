@@ -141,8 +141,6 @@ app.use("/api/votes", votesRoutes);
 app.use("/api/ranking-periods", rankingPeriodsRoutes);
 app.use("/api/series-rankings", seriesRankingsRoutes);
 app.use("/api/chapter-rankings", chapterRankingsRoutes);
-app.use("/api/rankings/series/top", seriesRankingsRoutes);
-app.use("/api/rankings/chapters/top", chapterRankingsRoutes);
 
 // Users nested
 app.use("/api/users/:userId/notifications", notificationsRoutes);

@@ -3,6 +3,7 @@ const seriesRepo = require('../series/series.repository');
 const seriesMembersRepo = require('../seriesMembers/seriesMembers.repository');
 const usersRepo = require('../users/users.repository');
 const AppError = require('../../utils/appError');
+const scheduleStorage = require('../../utils/scheduleStorage');
 
 const SERIES_STATUS = require('../../constants/status').SERIES_STATUS;
 
@@ -40,26 +41,52 @@ const getMySeriesById = async (userId, seriesId) => {
   const series = await seriesRepo.findById(seriesId);
   if (!series) throw new AppError('Series not found', 404);
   await assertMember(userId, seriesId);
-  return series;
+  return {
+    ...series,
+    publishSchedule: scheduleStorage.getSeriesSchedule(seriesId) || 'Weekly',
+    proposedStartDate: scheduleStorage.getSeriesProposedStartDate(seriesId) || null
+  };
 };
 
 const getMySeriesDetail = async (userId, seriesId) => {
   await assertMember(userId, seriesId);
   const series = await seriesRepo.findByIdWithDetail(seriesId);
   if (!series) throw new AppError('Series not found', 404);
-  return series;
+  return {
+    ...series,
+    publishSchedule: scheduleStorage.getSeriesSchedule(seriesId) || 'Weekly',
+    proposedStartDate: scheduleStorage.getSeriesProposedStartDate(seriesId) || null
+  };
 };
 
 const createSeries = async (userId, payload) => {
-  const series = await seriesRepo.create({ ...payload, view_count: 0, status: payload.status || 'draft' });
+  const { publishSchedule, proposedStartDate, ...seriesData } = payload;
+  const series = await seriesRepo.create({ ...seriesData, view_count: 0, status: seriesData.status || 'draft' });
   // auto-add mangaka as owner
   await seriesMembersRepo.create({ series_id: series.series_id, user_id: userId, role_in_series: 'owner' });
+  
+  if (publishSchedule) {
+    scheduleStorage.setSeriesSchedule(series.series_id, publishSchedule);
+  }
+  if (proposedStartDate) {
+    scheduleStorage.setSeriesProposedStartDate(series.series_id, proposedStartDate);
+  }
+  
   return series;
 };
 
 const updateSeries = async (userId, seriesId, payload) => {
   await assertMember(userId, seriesId);
-  return seriesRepo.update(seriesId, { ...payload, updated_at: new Date().toISOString() });
+  const { publishSchedule, proposedStartDate, ...seriesData } = payload;
+  
+  if (publishSchedule) {
+    scheduleStorage.setSeriesSchedule(seriesId, publishSchedule);
+  }
+  if (proposedStartDate) {
+    scheduleStorage.setSeriesProposedStartDate(seriesId, proposedStartDate);
+  }
+  
+  return seriesRepo.update(seriesId, { ...seriesData, updated_at: new Date().toISOString() });
 };
 
 const updateSeriesStatus = async (userId, seriesId, status) => {

@@ -4,7 +4,7 @@ const uuid = z.string().uuid();
 const ALERT_TYPES = ['CRITICAL', 'HIGH', 'MEDIUM'];
 const REPORT_TYPES = ['MONTHLY', 'CHAPTER', 'ALERT'];
 const REPORT_STATUS = ['DRAFT', 'PENDING_REVIEW', 'APPROVED'];
-const PROPOSAL_TYPES = ['RECOVERY', 'NEW_SERIES', 'PUBLISH_CHAPTER', 'SCHEDULE_CHANGE'];
+const PROPOSAL_TYPES = ['RECOVERY', 'NEW_SERIES', 'PUBLISH_CHAPTER', 'SCHEDULE_CHANGE', 'DEADLINE_REMINDER'];
 const PROPOSAL_STATUS = ['PENDING', 'APPROVED', 'REJECTED'];
 const TEAM_ROLES = ['Mangaka', 'Assistant'];
 const TEAM_STATUS = ['ACTIVE', 'WARNING', 'AT_RISK', 'LATE', 'IDLE'];
@@ -15,7 +15,7 @@ const listAlertsSchema = z.object({
   }),
 });
 
-const alertIdParamSchema = z.object({ params: z.object({ alert_id: uuid }) });
+const alertIdParamSchema = z.object({ params: z.object({ alert_id: z.string() }) });
 
 const listReportsSchema = z.object({
   query: z.object({
@@ -98,6 +98,12 @@ const createProposalSchema = z.object({
       series_title: z.string().min(1),
       details: z.string().min(1),
       metadata: scheduleChangeMetadataSchema,
+    }),
+    z.object({
+      type: z.literal('DEADLINE_REMINDER'),
+      series_title: z.string().min(1),
+      details: z.string().min(1),
+      metadata: z.any().optional(),
     }),
   ]),
 });

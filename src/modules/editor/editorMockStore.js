@@ -6,43 +6,17 @@ const state = {
   alerts: [
     {
       alert_id: "00000000-0000-4000-8000-000000000001",
-      type: "CRITICAL",
-      title: "Ranking Rớt Báo Động",
-      series_id: "11111111-1111-4111-8111-111111111111",
-      series_title: "Huyền Thoại Kiếm Vũ",
-      detail:
-        "Series đang giảm 3 bậc trong bảng xếp hạng tuần và cần hành động ngay.",
-      time: "2026-06-10T08:30:00.000Z",
-      action: "Lập Hồ Sơ Bảo Vệ",
-      action_path: "/dashboard/tantou-editor/series-defense",
-      is_resolved: false,
-    },
-    {
-      alert_id: "00000000-0000-4000-8000-000000000002",
       type: "HIGH",
-      title: "Đề xuất Xuất Bản Chậm",
-      series_id: "22222222-2222-4222-8222-222222222222",
-      series_title: "Ngọc Long Ký",
+      title: "Cảnh báo Tiến độ Bản thảo",
+      series_id: "e6ea07e5-9123-47ff-8a32-0378d900d7d0",
+      series_title: "Tăng nhân và Tên trộm",
       detail:
-        "Chương mới đang bị trễ ngày phát hành dự kiến, cần xem lại lịch.",
-      time: "2026-06-12T13:20:00.000Z",
-      action: "Xem Lịch Trình",
-      action_path: "/dashboard/tantou-editor/schedule-review",
-      is_resolved: false,
-    },
-    {
-      alert_id: "00000000-0000-4000-8000-000000000003",
-      type: "MEDIUM",
-      title: "Hiệu Suất Mangaka Giảm",
-      series_id: "33333333-3333-4333-8333-333333333333",
-      series_title: "Thiên Thư Võ Đạo",
-      detail:
-        "Khối lượng công việc và deadline của tác giả đang tiệm cận mức cảnh báo.",
-      time: "2026-06-14T09:45:00.000Z",
+        "Bản thảo của chương mới đang có dấu hiệu trễ so với lịch trình dự kiến. Cần gửi nhắc nhở cho Mangaka.",
+      time: now(),
       action: "Gửi Nhắc Nhở",
-      action_path: "/dashboard/tantou-editor/team-management",
+      action_path: "/dashboard/tantou-editor/series-defense?tab=deadline&series=Tăng nhân và Tên trộm",
       is_resolved: false,
-    },
+    }
   ],
   reports: [
     {
@@ -78,37 +52,7 @@ const state = {
       content: "Đề nghị xem xét bảo vệ các series có xếp hạng giảm đột ngột.",
     },
   ],
-  proposals: [
-    {
-      proposal_id: "00000000-0000-4000-8000-000000000201",
-      type: "RECOVERY",
-      series_title: "Huyền Thoại Kiếm Vũ",
-      details: "Đề xuất phục hồi ranking và tăng tương tác cho series.",
-      status: "PENDING",
-      created_at: "2026-06-12T15:00:00.000Z",
-      metadata: {
-        target_rank: "Top 20",
-        reason: "Lượt xem giảm do thiếu chương đặc sắc",
-        plan: "Tăng cường nội dung đặc biệt và quảng bá trên 2 kênh mới",
-      },
-      rejection_reason: null,
-    },
-    {
-      proposal_id: "00000000-0000-4000-8000-000000000202",
-      type: "NEW_SERIES",
-      series_title: "Biển Lửa",
-      details: "Đề nghị mở series mới nhằm mở rộng dòng truyện hành động.",
-      status: "APPROVED",
-      created_at: "2026-06-09T11:20:00.000Z",
-      metadata: {
-        author: "Lê Minh",
-        genre: "Hành động, Viễn tưởng",
-        synopsis: "Một nhóm chiến binh cứu thế giới khỏi năng lượng rực lửa.",
-        target_audience: "Thanh thiếu niên",
-      },
-      rejection_reason: null,
-    },
-  ],
+  proposals: [],
   team: [
     {
       user_id: "00000000-0000-4000-8000-000000000301",
@@ -138,6 +82,31 @@ const state = {
   meetings: [],
 };
 
+const fs = require('fs');
+const path = require('path');
+const DB_PATH = path.join(__dirname, 'editor_mock_db.json');
+
+const loadState = () => {
+  if (fs.existsSync(DB_PATH)) {
+    try {
+      const data = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
+      Object.assign(state, data);
+    } catch (e) {
+      console.error('Error loading mock db:', e);
+    }
+  }
+};
+
+const saveState = () => {
+  try {
+    fs.writeFileSync(DB_PATH, JSON.stringify(state, null, 2));
+  } catch (e) {
+    console.error('Error saving mock db:', e);
+  }
+};
+
+loadState();
+
 const getAlerts = ({ type } = {}) => {
   const items = state.alerts;
   return type ? items.filter((alert) => alert.type === type) : items;
@@ -147,6 +116,7 @@ const resolveAlert = (alertId) => {
   const alert = state.alerts.find((item) => item.alert_id === alertId);
   if (!alert) return null;
   alert.is_resolved = true;
+  saveState();
   return alert;
 };
 
@@ -167,6 +137,7 @@ const addReport = ({ title, type, content }) => {
     content,
   };
   state.reports.unshift(report);
+  saveState();
   return report;
 };
 
@@ -177,6 +148,7 @@ const updateReport = (reportId, payload) => {
   if (payload.content !== undefined) report.content = payload.content;
   if (payload.status !== undefined) report.status = payload.status;
   report.updated_at = now();
+  saveState();
   return report;
 };
 
@@ -185,6 +157,7 @@ const submitReport = (reportId) => {
   if (!report) return null;
   report.status = "PENDING_REVIEW";
   report.updated_at = now();
+  saveState();
   return report;
 };
 
@@ -205,7 +178,23 @@ const addProposal = ({ type, series_title, details, metadata }) => {
     rejection_reason: null,
   };
   state.proposals.unshift(proposal);
+  saveState();
   return proposal;
+};
+
+const updateProposalStatusBySeriesTitle = (seriesTitle, type, status) => {
+  const proposal = state.proposals.find(p => p.series_title === seriesTitle && p.type === type && p.status === 'PENDING');
+  if (proposal) {
+    proposal.status = status;
+    saveState();
+    return proposal;
+  }
+  return null;
+};
+
+const deleteProposalsBySeriesTitle = (seriesTitle, type) => {
+  state.proposals = state.proposals.filter(p => !(p.series_title === seriesTitle && p.type === type));
+  saveState();
 };
 
 const getTeam = ({ role } = {}) => {
@@ -237,6 +226,7 @@ const addTeamMember = ({
     ),
   };
   state.team.unshift(member);
+  saveState();
   return member;
 };
 
@@ -252,6 +242,7 @@ const updateTeamMember = (userId, payload) => {
   if (payload.workload !== undefined) member.workload = payload.workload;
   if (payload.next_deadline !== undefined)
     member.next_deadline = payload.next_deadline;
+  saveState();
   return member;
 };
 
@@ -259,6 +250,7 @@ const removeTeamMember = (userId) => {
   const index = state.team.findIndex((item) => item.user_id === userId);
   if (index === -1) return false;
   state.team.splice(index, 1);
+  saveState();
   return true;
 };
 
@@ -278,6 +270,7 @@ const addMeeting = ({ user_id, meeting_date, meeting_time, notes }) => {
     created_at: now(),
   };
   state.meetings.unshift(meeting);
+  saveState();
   return meeting;
 };
 
@@ -296,4 +289,7 @@ module.exports = {
   removeTeamMember,
   nudgeTeamMember,
   addMeeting,
+  updateProposalStatusBySeriesTitle,
+  deleteProposalsBySeriesTitle,
 };
+ 

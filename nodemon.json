@@ -1,0 +1,7 @@
+{
+  "ignore": [
+    "src/modules/editor/editor_mock_db.json",
+    "resolved_alerts.json",
+    "tests/*"
+  ]
+}

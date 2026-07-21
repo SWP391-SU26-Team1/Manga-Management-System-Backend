@@ -98,16 +98,160 @@ const getPeriodSummary = async (periodId) => {
   return { period_id: periodId, top_series: series || [], top_chapters: chapters || [] };
 };
 
-// --- Dynamic Board ---
 const getTopSeries = async (filters) => {
-  let query = supabase.from('series_ranking').select('*, series:series_id(title, status, genre, cover_image_url, view_count), ranking_period:period_id(name, start_date, end_date)');
+  // --- Tái cấu trúc theo yêu cầu: Lấy hạng Global theo Lượt đọc (view_count) ---
+  if (filters.editorId) {
+    // 1. Lấy tất cả series đã public xếp theo view_count
+    const { data: allPublished, error: errAll } = await supabase
+      .from('series')
+      .select('series_id, title, status, genre, cover_image_url, view_count')
+      .eq('status', 'published')
+      .order('view_count', { ascending: false });
+      
+    if (errAll) throw errAll;
+    if (!allPublished || allPublished.length === 0) return [];
+
+    // Gán hạng Global
+    allPublished.forEach((s, idx) => {
+      s.global_rank = idx + 1;
+    });
+
+    // 2. Lọc ra những series do editor quản lý
+    const { data: memberSeries } = await supabase
+      .from('series_member')
+      .select('series_id')
+      .eq('user_id', filters.editorId)
+      .eq('role_in_series', 'editor');
+      
+    const editorSeriesIds = memberSeries?.map(m => m.series_id) || [];
+    if (editorSeriesIds.length === 0) return [];
+
+    const editorSeries = allPublished.filter(s => editorSeriesIds.includes(s.series_id));
+    if (editorSeries.length === 0) return [];
+
+    // 3. Lấy thông tin Mangaka (owner) và Lượt thích
+    const { data: members } = await supabase
+      .from('series_member')
+      .select('series_id, user:user_id(username, name)')
+      .in('series_id', editorSeriesIds)
+      .eq('role_in_series', 'owner');
+      
+    const ownerMap = {};
+    (members || []).forEach(m => {
+      if (m.user) ownerMap[m.series_id] = { username: m.user.username, fullName: m.user.name };
+    });
+
+    const { data: chaptersData } = await supabase
+      .from('chapter')
+      .select('series_id, chapter_like(count)')
+      .in('series_id', editorSeriesIds);
+      
+    const seriesLikesMap = {};
+    if (chaptersData) {
+      for (const ch of chaptersData) {
+        if (!seriesLikesMap[ch.series_id]) seriesLikesMap[ch.series_id] = 0;
+        seriesLikesMap[ch.series_id] += ch.chapter_like?.length ? ch.chapter_like[0].count : 0;
+      }
+    }
+
+    // 4. Trả về đúng format frontend cần
+    return editorSeries.map(s => ({
+      series_ranking_id: s.series_id,
+      series_id: s.series_id,
+      rank_position: s.global_rank, // Hạng trên bảng
+      prev_rank: s.global_rank, // Khởi tạo prevRank = rank để ko bị lệch (-0)
+      score: 0,
+      series: {
+        ...s,
+        owner: ownerMap[s.series_id] || { username: '—' },
+        like_count: seriesLikesMap[s.series_id] || 0
+      }
+    }));
+  }
+
+  // --- Logic cũ (cho các trang khác không truyền editorId) ---
+  let query = supabase.from('series_ranking').select('*, series:series_id(series_id, title, status, genre, cover_image_url, view_count), ranking_period:period_id(name, start_date, end_date)');
   if (filters.periodId) query = query.eq('period_id', filters.periodId);
   if (filters.status) query = query.eq('series.status', filters.status);
   if (filters.genre) query = query.eq('series.genre', filters.genre);
+
   query = query.order('rank_position').limit(filters.limit || 20);
   const { data, error } = await query;
   if (error) throw error;
-  return data;
+
+  if (!data || data.length === 0) return [];
+
+  const seriesIds = data.map(r => r.series_id);
+  const { data: members, error: memError } = await supabase
+    .from('series_member')
+    .select('series_id, user:user_id(username, name)')
+    .in('series_id', seriesIds)
+    .eq('role_in_series', 'owner');
+
+  if (memError) {
+    console.error("Error fetching series owners:", memError);
+  }
+
+  const ownerMap = {};
+  (members || []).forEach(m => {
+    if (m.user) {
+      ownerMap[m.series_id] = {
+        username: m.user.username,
+        fullName: m.user.name
+      };
+    }
+  });
+
+  const { data: chaptersData } = await supabase
+    .from('chapter')
+    .select('series_id, chapter_like(count)')
+    .in('series_id', seriesIds);
+
+  const seriesLikesMap = {};
+  if (chaptersData) {
+    for (const ch of chaptersData) {
+      if (!seriesLikesMap[ch.series_id]) seriesLikesMap[ch.series_id] = 0;
+      const count = ch.chapter_like && ch.chapter_like.length > 0 ? ch.chapter_like[0].count : 0;
+      seriesLikesMap[ch.series_id] += count;
+    }
+  }
+
+  let prevPeriodId = null;
+  if (data.length > 0 && data[0].ranking_period) {
+    const currentStartDate = data[0].ranking_period.start_date;
+    const { data: prevPeriods } = await supabase
+      .from('ranking_period')
+      .select('period_id')
+      .lt('start_date', currentStartDate)
+      .order('start_date', { ascending: false })
+      .limit(1);
+    if (prevPeriods && prevPeriods.length > 0) {
+      prevPeriodId = prevPeriods[0].period_id;
+    }
+  }
+
+  let prevRankMap = {};
+  if (prevPeriodId && seriesIds.length > 0) {
+    const { data: prevRankings } = await supabase
+      .from('series_ranking')
+      .select('series_id, rank_position')
+      .eq('period_id', prevPeriodId)
+      .in('series_id', seriesIds);
+    if (prevRankings) {
+      prevRankings.forEach(pr => {
+        prevRankMap[pr.series_id] = pr.rank_position;
+      });
+    }
+  }
+
+  return data.map(r => {
+    if (r.series) {
+      r.series.owner = ownerMap[r.series_id] || { username: '—' };
+      r.series.like_count = seriesLikesMap[r.series_id] || 0;
+    }
+    r.prev_rank = prevRankMap[r.series_id] || r.rank_position;
+    return r;
+  });
 };
 
 const getTopChapters = async (filters) => {

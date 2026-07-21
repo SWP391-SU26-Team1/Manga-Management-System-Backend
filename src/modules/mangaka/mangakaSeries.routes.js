@@ -7,8 +7,8 @@ const ctrl = require('./mangakaSeries.controller');
 
 const uuid = z.string().uuid();
 
-const createSchema = z.object({ body: z.object({ title: z.string().min(1).max(255), description: z.string().optional(), cover_image_url: z.string().url().optional(), genre: z.string().max(100).optional(), status: z.enum(SERIES_STATUS).default('draft') }) });
-const updateSchema = z.object({ params: z.object({ seriesId: uuid }), body: z.object({ title: z.string().min(1).max(255).optional(), description: z.string().optional(), cover_image_url: z.string().url().optional(), genre: z.string().max(100).optional() }) });
+const createSchema = z.object({ body: z.object({ title: z.string().min(1).max(255), description: z.string().optional(), cover_image_url: z.string().url().optional(), genre: z.string().max(100).optional(), status: z.enum(SERIES_STATUS).default('draft'), publishSchedule: z.string().optional(), proposedStartDate: z.string().optional() }) });
+const updateSchema = z.object({ params: z.object({ seriesId: uuid }), body: z.object({ title: z.string().min(1).max(255).optional(), description: z.string().optional(), cover_image_url: z.string().url().optional(), genre: z.string().max(100).optional(), publishSchedule: z.string().optional(), proposedStartDate: z.string().optional() }) });
 const statusSchema = z.object({ params: z.object({ seriesId: uuid }), body: z.object({ status: z.enum(SERIES_STATUS) }) });
 const idSchema = z.object({ params: z.object({ seriesId: uuid }) });
 const memberSchema = z.object({ params: z.object({ seriesId: uuid }), body: z.object({ user_id: uuid, role_in_series: z.string().min(1).max(50) }) });

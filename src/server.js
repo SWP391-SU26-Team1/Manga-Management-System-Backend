@@ -19,8 +19,13 @@ const startServer = (port) => {
 
   server.on('error', (error) => {
     if (error.code === 'EADDRINUSE') {
-      console.warn(`⚠️ Port ${port} is busy, trying ${port + 1}...`);
-      startServer(port + 1);
+      console.warn(`⚠️ Port ${port} is busy, retrying in 500ms...`);
+      setTimeout(() => {
+        try {
+          server.close();
+        } catch (e) {}
+        startServer(port);
+      }, 500);
       return;
     }
 
@@ -38,3 +43,54 @@ const startServer = (port) => {
 };
 
 startServer(DEFAULT_PORT);
+
+// Graceful shutdown for nodemon
+process.once('SIGUSR2', () => {
+  console.log('Nodemon restarting, exiting child process...');
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT received, exiting...');
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, exiting...');
+  process.exit(0);
+});
+
+// Windows nodemon fix: exit when stdin closes (parent process ends or restarts)
+process.stdin.on('close', () => {
+  console.log('stdin closed, exiting child process...');
+  process.exit(0);
+});
+process.stdin.resume();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

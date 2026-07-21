@@ -65,12 +65,56 @@ const performWorkflow = async (manuscriptId, editorId, action, payload) => {
   const rule = MANUSCRIPT_WORKFLOW[action];
   if (!rule) throw new AppError('Unknown workflow action', 400);
   if (!rule.from.includes(m.status)) throw new AppError(`Cannot perform '${action}' from '${m.status}'`, 400);
+
+  if (rule.to === 'approved' && editorId) {
+    const { data: existingMember } = await supabase
+      .from('series_member')
+      .select('*')
+      .eq('series_id', m.series_id)
+      .eq('user_id', editorId)
+      .maybeSingle();
+
+    if (!existingMember) {
+      await supabase.from('series_member').insert({
+        series_id: m.series_id,
+        user_id: editorId,
+        role_in_series: 'editor'
+      });
+    }
+  }
+
   return manuscriptsRepo.update(manuscriptId, { status: rule.to, updated_at: new Date().toISOString() });
 };
 
-const bulkUpdateManuscripts = async (manuscriptIds, status) => {
+const bulkUpdateManuscripts = async (manuscriptIds, status, editorId) => {
   const updates = manuscriptIds.map((id) => supabase.from('manuscript').update({ status, updated_at: new Date().toISOString() }).eq('manuscript_id', id));
   await Promise.all(updates);
+
+  if (status === 'approved' && editorId) {
+    const { data: manuscripts } = await supabase
+      .from('manuscript')
+      .select('series_id')
+      .in('manuscript_id', manuscriptIds);
+
+    const seriesIds = [...new Set((manuscripts || []).map(m => m.series_id))];
+
+    for (const sId of seriesIds) {
+      const { data: existingMember } = await supabase
+        .from('series_member')
+        .select('*')
+        .eq('series_id', sId)
+        .eq('user_id', editorId)
+        .maybeSingle();
+
+      if (!existingMember) {
+        await supabase.from('series_member').insert({
+          series_id: sId,
+          user_id: editorId,
+          role_in_series: 'editor'
+        });
+      }
+    }
+  }
 };
 
 module.exports = { listManuscripts, getManuscriptById, getManuscriptDetail, performWorkflow, bulkUpdateManuscripts };

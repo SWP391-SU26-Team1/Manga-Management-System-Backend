@@ -51,10 +51,22 @@ const listSeries = async (req, res, next) => {
       .range(offset, offset + limit - 1);
     const { data, error, count } = await query;
     if (error) throw error;
+
+    const scheduleStorage = require("../../utils/scheduleStorage");
+    const enrichedData = (data || []).map(series => {
+      const schedule = scheduleStorage.getSeriesSchedule(series.series_id) || "Weekly";
+      const proposedStartDate = scheduleStorage.getSeriesProposedStartDate(series.series_id) || null;
+      return {
+        ...series,
+        publishSchedule: schedule,
+        proposedStartDate: proposedStartDate
+      };
+    });
+
     return res.status(200).json({
       success: true,
       message: "Success",
-      data,
+      data: enrichedData,
       pagination: buildPaginationMeta(page, limit, count),
     });
   } catch (e) {
@@ -235,7 +247,7 @@ const removeMember = async (req, res, next) => {
 // --- Dashboard ---
 const dashboardOverview = async (req, res, next) => {
   try {
-    return sendSuccess(res, 200, await dashboardSvc.getOverview(), "Success");
+    return sendSuccess(res, 200, await dashboardSvc.getOverview(req.user.user_id), "Success");
   } catch (e) {
     next(e);
   }
@@ -500,6 +512,7 @@ const bulkApproveManuscripts = async (req, res, next) => {
     await manuscriptReviewSvc.bulkUpdateManuscripts(
       req.body.manuscript_ids,
       "approved",
+      req.user.user_id,
     );
     return sendSuccess(res, 200, null, "Manuscripts approved");
   } catch (e) {
@@ -512,6 +525,7 @@ const bulkRejectManuscripts = async (req, res, next) => {
     await manuscriptReviewSvc.bulkUpdateManuscripts(
       req.body.manuscript_ids,
       "rejected",
+      req.user.user_id,
     );
     return sendSuccess(res, 200, null, "Manuscripts rejected");
   } catch (e) {
@@ -820,8 +834,49 @@ const reviewSessionWorkflow = (action) => async (req, res, next) => {
 
 // Proposals (map to review_session)
 const createProposal = async (req, res, next) => {
+  console.log("createProposal hit with body:", req.body);
   try {
     const data = await editorProposalsSvc.createProposal(req.body);
+    
+    if (req.body.type === 'DEADLINE_REMINDER') {
+      const seriesTitle = req.body.series_title;
+      const { data: seriesList } = await supabase.from('series').select('series_id').eq('title', seriesTitle);
+      if (seriesList && seriesList.length > 0) {
+         const seriesId = seriesList[0].series_id;
+         const { data: members } = await supabase.from('series_member').select('user_id').eq('series_id', seriesId).eq('role_in_series', 'owner');
+         if (members && members.length > 0) {
+            const notifications = members.map(m => ({
+               userId: m.user_id,
+               title: `Nhắc nhở Deadline: ${seriesTitle}`,
+               content: req.body.metadata?.message || 'Bạn có một nhắc nhở trễ hạn từ Editor.',
+               type: 'ranking_warning',
+               metadata: { sender_id: req.user?.user_id, series_id: seriesId }
+            }));
+            await createNotifications(notifications);
+         }
+      }
+    } else if (req.body.type === 'RECOVERY') {
+      const seriesTitle = req.body.series_title;
+      const { data: seriesList } = await supabase.from('series').select('series_id').eq('title', seriesTitle);
+      if (seriesList && seriesList.length > 0) {
+         const seriesId = seriesList[0].series_id;
+         const { data: members } = await supabase.from('series_member').select('user_id').eq('series_id', seriesId).eq('role_in_series', 'owner');
+         if (members && members.length > 0) {
+            const metadata = req.body.metadata || {};
+            const contentMessage = `Tantou Editor đã yêu cầu khắc phục tụt hạng cho series "${seriesTitle}".\n- Mục tiêu: ${metadata.target_rank || 'N/A'}\n- Nguyên nhân: ${metadata.reason || 'N/A'}\n- Kế hoạch: ${metadata.plan || 'N/A'}`;
+            
+            const notifications = members.map(m => ({
+               userId: m.user_id,
+               title: `Cảnh báo xếp hạng series: ${seriesTitle}`,
+               content: contentMessage,
+               type: 'ranking_warning',
+               metadata: { sender_id: req.user?.user_id, series_id: seriesId }
+            }));
+            await createNotifications(notifications);
+         }
+      }
+    }
+    
     return sendSuccess(res, 201, data, "Proposal created");
   } catch (e) {
     next(e);
@@ -830,7 +885,7 @@ const createProposal = async (req, res, next) => {
 
 const listAlerts = async (req, res, next) => {
   try {
-    const data = await editorAlertsSvc.listAlerts({ type: req.query.type });
+    const data = await editorAlertsSvc.listAlerts({ type: req.query.type, editorId: req.user.user_id });
     return sendSuccess(res, 200, data, "Success");
   } catch (e) {
     next(e);
@@ -839,7 +894,7 @@ const listAlerts = async (req, res, next) => {
 
 const resolveAlert = async (req, res, next) => {
   try {
-    const data = await editorAlertsSvc.resolveAlert(req.params.alert_id);
+    const data = await editorAlertsSvc.resolveAlert(req.params.alert_id, req.user.user_id);
     if (!data) return next(new AppError("Alert not found", 404));
     return sendSuccess(res, 200, null, "Alert resolved");
   } catch (e) {

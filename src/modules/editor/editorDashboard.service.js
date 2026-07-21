@@ -1,18 +1,58 @@
 const supabase = require('../../config/supabase');
 
-const getOverview = async () => {
+const getOverview = async (editorId) => {
   const now = new Date().toISOString();
+  
+  let seriesIds = null;
+  if (editorId) {
+    const { data: memberSeries } = await supabase
+      .from('series_member')
+      .select('series_id')
+      .eq('user_id', editorId);
+    seriesIds = memberSeries?.map(m => m.series_id) || [];
+  }
+
   const [{ count: totalSeries }, { count: totalChapters }, { count: totalPages }, { data: tasks }] = await Promise.all([
     supabase.from('series').select('*', { count: 'exact', head: true }),
     supabase.from('chapter').select('*', { count: 'exact', head: true }),
     supabase.from('page').select('*', { count: 'exact', head: true }),
-    supabase.from('page_task').select('task_id, status, deadline'),
+    supabase.from('page_task').select('task_id, status, deadline, page_id'),
   ]);
 
-  const byStatus = (tasks || []).reduce((acc, t) => { acc[t.status] = (acc[t.status] ?? 0) + 1; return acc; }, {});
-  const overdue = (tasks || []).filter((t) => t.deadline && new Date(t.deadline) < new Date() && !['completed', 'cancelled', 'rejected'].includes(t.status)).length;
+  let filteredTasks = tasks || [];
+  if (seriesIds !== null) {
+    if (seriesIds.length === 0) {
+      filteredTasks = [];
+    } else {
+      const { data: chapters } = await supabase.from('chapter').select('chapter_id').in('series_id', seriesIds);
+      const chapterIds = chapters?.map(c => c.chapter_id) || [];
+      if (chapterIds.length === 0) {
+        filteredTasks = [];
+      } else {
+        const { data: pages } = await supabase.from('page').select('page_id').in('chapter_id', chapterIds);
+        const pageIds = pages?.map(p => p.page_id) || [];
+        if (pageIds.length === 0) {
+          filteredTasks = [];
+        } else {
+          filteredTasks = (tasks || []).filter(t => pageIds.includes(t.page_id));
+        }
+      }
+    }
+  }
 
-  return { total_series: totalSeries ?? 0, total_chapters: totalChapters ?? 0, total_pages: totalPages ?? 0, total_tasks: tasks?.length ?? 0, ...byStatus, overdue_tasks: overdue };
+  const byStatus = filteredTasks.reduce((acc, t) => { acc[t.status] = (acc[t.status] ?? 0) + 1; return acc; }, {});
+  const overdue = filteredTasks.filter((t) => t.deadline && new Date(t.deadline) < new Date() && !['completed', 'cancelled', 'rejected'].includes(t.status)).length;
+
+  const activeSeriesCount = seriesIds !== null ? seriesIds.length : (totalSeries ?? 0);
+
+  return { 
+    total_series: activeSeriesCount, 
+    total_chapters: totalChapters ?? 0, 
+    total_pages: totalPages ?? 0, 
+    total_tasks: filteredTasks.length, 
+    ...byStatus, 
+    overdue_tasks: overdue 
+  };
 };
 
 const getSeriesProgress = async (seriesId) => {

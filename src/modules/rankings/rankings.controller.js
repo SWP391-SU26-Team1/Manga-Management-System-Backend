@@ -44,7 +44,16 @@ const getPeriodSummary = async (req, res, next) => {
 
 const getTopSeries = async (req, res, next) => {
   try {
-    const data = await svc.getTopSeries({ periodId: req.query.period_id, status: req.query.status, genre: req.query.genre, limit: Number(req.query.limit) || 20 });
+    console.log("DEBUG getTopSeries req.user:", req.user);
+    const editorId = req.user && req.user.role === 'editor' ? req.user.user_id : null;
+    console.log("DEBUG getTopSeries editorId:", editorId);
+    const data = await svc.getTopSeries({ 
+      periodId: req.query.period_id, 
+      status: req.query.status, 
+      genre: req.query.genre, 
+      limit: Number(req.query.limit) || 20,
+      editorId 
+    });
     return sendSuccess(res, 200, data, 'Success');
   } catch (e) { next(e); }
 };

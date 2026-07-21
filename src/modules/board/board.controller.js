@@ -10,19 +10,59 @@ const AppError = require('../../utils/appError');
 const listProposals = async (req, res, next) => {
   try {
     const { page, limit, offset } = parsePagination(req.query);
-    const { data, error, count } = await supabase.from('review_session').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range(offset, offset + limit - 1);
+    const { data: rawSessions, error, count } = await supabase
+      .from('review_session')
+      .select('*, series:series_id(*, series_member(*, users:user_id(*))), chapter:chapter_id(*, series:series_id(*, series_member(*, users:user_id(*))))', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
     if (error) throw error;
+
+    const data = (rawSessions || []).map(session => {
+      const s = session.series || (session.chapter ? session.chapter.series : null) || {};
+      const ownerMember = (s.series_member || []).find(m => m.role_in_series === 'owner');
+      const authorName = ownerMember?.users?.name || ownerMember?.users?.username || 'N/A';
+      return {
+        ...session,
+        series: {
+          ...s,
+          author: authorName,
+          title: s.title || 'Unknown Title',
+          cover_image_url: s.cover_image_url || 'https://images.unsplash.com/photo-1578632292335-df3f3e8f4c64?w=200&h=300&fit=crop'
+        }
+      };
+    });
+
     return res.status(200).json({ success: true, message: 'Success', data, pagination: buildPaginationMeta(page, limit, count) });
   } catch (e) { next(e); }
-};
+}
 
 const listPendingProposals = async (req, res, next) => {
   try {
-    const { data, error } = await supabase.from('review_session').select('*').in('status', ['pending', 'in_progress']).order('created_at', { ascending: false });
+    const { data: rawSessions, error } = await supabase
+      .from('review_session')
+      .select('*, series:series_id(*, series_member(*, users:user_id(*))), chapter:chapter_id(*, series:series_id(*, series_member(*, users:user_id(*))))')
+      .in('status', ['pending', 'in_progress'])
+      .order('created_at', { ascending: false });
     if (error) throw error;
+
+    const data = (rawSessions || []).map(session => {
+      const s = session.series || (session.chapter ? session.chapter.series : null) || {};
+      const ownerMember = (s.series_member || []).find(m => m.role_in_series === 'owner');
+      const authorName = ownerMember?.users?.name || ownerMember?.users?.username || 'N/A';
+      return {
+        ...session,
+        series: {
+          ...s,
+          author: authorName,
+          title: s.title || 'Unknown Title',
+          cover_image_url: s.cover_image_url || 'https://images.unsplash.com/photo-1578632292335-df3f3e8f4c64?w=200&h=300&fit=crop'
+        }
+      };
+    });
+
     return sendSuccess(res, 200, data, 'Success');
   } catch (e) { next(e); }
-};
+}
 
 const getProposalById = async (req, res, next) => {
   try {
