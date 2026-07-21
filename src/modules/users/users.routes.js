@@ -45,6 +45,13 @@ router.patch(
   validate(v.updateUserStatusSchema),
   controller.updateUserStatus,
 );
+router.patch(
+  "/:userId/role",
+  authenticateToken,
+  requireRole(["admin"]),
+  validate(v.updateUserRoleSchema),
+  controller.updateUserRole,
+);
 router.delete(
   "/:userId",
   authenticateToken,

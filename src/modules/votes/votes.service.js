@@ -38,19 +38,13 @@ const updateVote = async (voteId, payload) => {
     }
   }
 
-  return votesRepo.update(voteId, {
-    ...payload,
-    updated_at: new Date().toISOString(),
-  });
+  return votesRepo.update(voteId, payload);
 };
 
 const updateVoteStatus = async (voteId, status) => {
   const vote = await votesRepo.findById(voteId);
   if (!vote) throw new AppError('Vote not found', 404);
-  return votesRepo.update(voteId, {
-    status,
-    updated_at: new Date().toISOString(),
-  });
+  return votesRepo.update(voteId, { status });
 };
 
 const deleteVote = async (voteId) => {

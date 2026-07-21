@@ -97,6 +97,12 @@ const updateUserStatus = async (userId, status) => {
   return usersRepo.update(userId, { status });
 };
 
+const updateUserRole = async (userId, role) => {
+  const user = await usersRepo.findById(userId);
+  if (!user) throw new AppError("User not found", 404);
+  return usersRepo.update(userId, { role });
+};
+
 const deleteUser = async (userId) => {
   const user = await usersRepo.findById(userId);
   if (!user) throw new AppError("User not found", 404);
@@ -110,5 +116,6 @@ module.exports = {
   createUser,
   updateUser,
   updateUserStatus,
+  updateUserRole,
   deleteUser,
 };
