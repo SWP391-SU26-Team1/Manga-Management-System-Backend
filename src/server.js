@@ -1,13 +1,4 @@
 const http = require('http');
-
-// === TEMPORARY DEBUG: Check env vars on Railway ===
-console.log('=== CHECK ENV TRÊN RAILWAY ===');
-console.log('SUPABASE_URL:              ', process.env.SUPABASE_URL ? '✅ Đã có' : '❌ BỊ THIẾU!');
-console.log('SUPABASE_SERVICE_ROLE_KEY: ', process.env.SUPABASE_SERVICE_ROLE_KEY ? '✅ Đã có' : '❌ BỊ THIẾU!');
-console.log('JWT_SECRET:                ', process.env.JWT_SECRET ? '✅ Đã có' : '❌ BỊ THIẾU!');
-console.log('CLOUDINARY_CLOUD_NAME:     ', process.env.CLOUDINARY_CLOUD_NAME ? '✅ Đã có' : '❌ BỊ THIẾU!');
-console.log('================================');
-
 const app = require('./app');
 const notificationSocket = require('./realtime/notification.socket');
 
