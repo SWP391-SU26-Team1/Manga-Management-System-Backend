@@ -5,7 +5,7 @@ const createViewLog = async ({ chapterId, seriesId, userId }) => {
     .from("view_log")
     .insert({ 
       chapter_id: chapterId,
-      user_id: userId ?? null
+      // user_id: userId ?? null
     })
     .select("*")
     .single();
