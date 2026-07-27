@@ -78,11 +78,26 @@ const sendOtpEmail = async (email, otp, type = "reset") => {
     throw new AppError("Email service is not available", 500);
   }
 
+  // Force IPv4 lookup for Railway environment
+  const dns = require('dns');
+  const { promisify } = require('util');
+  let resolvedHost = smtpHost;
+  try {
+    const { address } = await promisify(dns.lookup)(smtpHost, { family: 4 });
+    resolvedHost = address;
+  } catch (err) {
+    console.error("[auth] DNS lookup failed for SMTP host:", err);
+  }
+
   const transporter = nodemailer.createTransport({
-    host: smtpHost,
+    host: resolvedHost,
     port: smtpPort,
     secure: smtpSecure,
     auth: { user: smtpUser, pass: smtpPass },
+    tls: {
+      // Required so TLS doesn't fail when connecting via IP address
+      servername: smtpHost
+    }
   });
 
   const subject = type === "register"
