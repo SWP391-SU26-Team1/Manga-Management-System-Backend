@@ -114,6 +114,34 @@ const sendOtpEmail = async (email, otp, type = "reset") => {
         `[Local Test] Redirecting OTP email from ${email} to developer test email: ${recipient}`,
       );
     }
+    
+    // 🚀 NEW: Fallback to HTTP API (Brevo) if configured (Bypasses Railway SMTP block)
+    if (process.env.BREVO_API_KEY) {
+      const brevoPayload = {
+        sender: { name: "MangaFlow", email: process.env.EMAIL_FROM || smtpUser },
+        to: [{ email: recipient }],
+        subject: subject,
+        textContent: text
+      };
+
+      const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+        method: "POST",
+        headers: {
+          "accept": "application/json",
+          "api-key": process.env.BREVO_API_KEY,
+          "content-type": "application/json"
+        },
+        body: JSON.stringify(brevoPayload)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Brevo API Error: ${response.status} - ${errorData}`);
+      }
+      return; // Exit successfully if Brevo works
+    }
+
+    // 📬 OLD: SMTP Nodemailer (Will be blocked on Railway Free/Hobby)
     await transporter.sendMail({
       from: process.env.EMAIL_FROM || smtpUser,
       to: recipient,
