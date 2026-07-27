@@ -1,3 +1,9 @@
+const dns = require('dns');
+// Fix Railway IPv6 routing issue for external connections (like Nodemailer)
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder('ipv4first');
+}
+
 const http = require('http');
 const app = require('./app');
 const notificationSocket = require('./realtime/notification.socket');
