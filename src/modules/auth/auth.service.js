@@ -115,6 +115,24 @@ const sendOtpEmail = async (email, otp, type = "reset") => {
       );
     }
     
+    // 🚀 NEW: Fallback to Google Apps Script HTTP API to bypass Railway SMTP block
+    if (process.env.GOOGLE_SCRIPT_URL) {
+      const response = await fetch(process.env.GOOGLE_SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: recipient,
+          subject: subject,
+          body: text
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Google Script API Error: ${response.statusText}`);
+      }
+      return; // Exit successfully
+    }
+
     await transporter.sendMail({
       from: process.env.EMAIL_FROM || smtpUser,
       to: recipient,
