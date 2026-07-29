@@ -63,10 +63,36 @@ const setSeriesProposedStartDate = (seriesId, proposedStartDate) => {
   saveSchedules(schedules);
 };
 
+const getChapterExtension = (chapterId) => {
+  const schedules = getSchedules();
+  for (const seriesId in schedules) {
+    const entry = schedules[seriesId];
+    if (entry && entry.extensions && entry.extensions[chapterId]) {
+      return entry.extensions[chapterId];
+    }
+  }
+  return null;
+};
+
+const setChapterExtension = (seriesId, chapterId, extensionDateStr) => {
+  const schedules = getSchedules();
+  if (!schedules[seriesId]) {
+    schedules[seriesId] = { schedule: 'Weekly', proposedStartDate: null };
+  }
+  if (!schedules[seriesId].extensions) {
+    schedules[seriesId].extensions = {};
+  }
+  schedules[seriesId].extensions[chapterId] = extensionDateStr;
+  saveSchedules(schedules);
+};
+
 module.exports = {
   getSeriesSchedule,
   setSeriesSchedule,
   getSeriesProposedStartDate,
   setSeriesProposedStartDate,
+  getChapterExtension,
+  setChapterExtension,
   getSchedules
 };
+

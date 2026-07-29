@@ -94,6 +94,50 @@ const performWorkflow = async (chapterId, seriesId, action) => {
         .update({ status: 'completed' })
         .in('page_id', pageIds);
     }
+
+    try {
+      const { createNotification } = require('../../utils/notification.helper');
+      const { data: series } = await supabase
+        .from('series')
+        .select('title')
+        .eq('series_id', seriesId)
+        .single();
+      const seriesTitle = series ? series.title : 'truyện';
+      const chapTitle = chapter.title || `Chương ${chapter.chapter_number}`;
+      
+      const { data: members } = await supabase
+        .from('series_member')
+        .select('user_id')
+        .eq('series_id', seriesId)
+        .eq('role_in_series', 'editor');
+      const editorIds = members ? members.map(m => m.user_id) : [];
+      
+      const { data: admins } = await supabase
+        .from('users')
+        .select('user_id')
+        .eq('role', 'admin');
+      const adminIds = admins ? admins.map(a => a.user_id) : [];
+      
+      for (const editorId of editorIds) {
+        await createNotification(
+          editorId,
+          'Nộp Chapter mới',
+          `${chapTitle} của bộ truyện "${seriesTitle}" đã hoàn thành xong bản vẽ và nộp lên hệ thống.`,
+          'chapter_submitted'
+        );
+      }
+      
+      for (const adminId of adminIds) {
+        await createNotification(
+          adminId,
+          'Nộp Chapter mới - Chờ mở vote',
+          `${chapTitle} của bộ truyện "${seriesTitle}" đã hoàn thành xong bản vẽ. Vui lòng mở phiên bỏ phiếu thẩm định chất lượng.`,
+          'chapter_submitted'
+        );
+      }
+    } catch (err) {
+      console.error('[Notification Error] Failed to send chapter submission notifications:', err);
+    }
   }
 
   return result;

@@ -53,13 +53,17 @@ const listSeries = async (req, res, next) => {
     if (error) throw error;
 
     const scheduleStorage = require("../../utils/scheduleStorage");
+    const schedules = scheduleStorage.getSchedules() || {};
     const enrichedData = (data || []).map(series => {
       const schedule = scheduleStorage.getSeriesSchedule(series.series_id) || "Weekly";
       const proposedStartDate = scheduleStorage.getSeriesProposedStartDate(series.series_id) || null;
+      const entry = schedules[series.series_id];
+      const extensions = (entry && entry.extensions) || {};
       return {
         ...series,
         publishSchedule: schedule,
-        proposedStartDate: proposedStartDate
+        proposedStartDate: proposedStartDate,
+        extensions: extensions
       };
     });
 
@@ -840,15 +844,44 @@ const createProposal = async (req, res, next) => {
     
     if (req.body.type === 'DEADLINE_REMINDER') {
       const seriesTitle = req.body.series_title;
+      const chapterTitle = req.body.metadata?.chapter;
       const { data: seriesList } = await supabase.from('series').select('series_id').eq('title', seriesTitle);
       if (seriesList && seriesList.length > 0) {
          const seriesId = seriesList[0].series_id;
+         let chapterId = null;
+         
+         if (chapterTitle) {
+           if (chapterTitle.includes('Dự kiến') || chapterTitle.includes('dự kiến')) {
+             chapterId = `virtual_${seriesId}`;
+           } else {
+             let { data: chapList } = await supabase.from('chapter')
+               .select('chapter_id')
+               .eq('series_id', seriesId)
+               .eq('title', chapterTitle);
+               
+             if ((!chapList || chapList.length === 0) && chapterTitle.startsWith('Chương ')) {
+               const cleanTitle = chapterTitle.replace('Chương ', '').trim();
+               const res = await supabase.from('chapter')
+                 .select('chapter_id')
+                 .eq('series_id', seriesId)
+                 .or(`title.ilike.%${cleanTitle}%,chapter_number.eq.${cleanTitle}`);
+               chapList = res.data;
+             }
+             
+             if (chapList && chapList.length > 0) {
+               chapterId = chapList[0].chapter_id;
+             } else {
+               chapterId = `virtual_${seriesId}`;
+             }
+           }
+         }
+         
          const { data: members } = await supabase.from('series_member').select('user_id').eq('series_id', seriesId).eq('role_in_series', 'owner');
          if (members && members.length > 0) {
             const notifications = members.map(m => ({
                userId: m.user_id,
                title: `Nhắc nhở Deadline: ${seriesTitle}`,
-               content: req.body.metadata?.message || 'Bạn có một nhắc nhở trễ hạn từ Editor.',
+               content: (req.body.metadata?.message || 'Bạn có một nhắc nhở trễ hạn từ Editor.') + `\n[meta:${seriesId}:${chapterId || 'null'}]`,
                type: 'ranking_warning',
                metadata: { sender_id: req.user?.user_id, series_id: seriesId }
             }));

@@ -67,30 +67,83 @@ const acknowledgeNotification = async (req, res, next) => {
       type: 'ranking_warning_acknowledged'
     });
     
-    // Check if it's a warning and try to notify the editor
+    // Check if it's a warning and try to notify the editor and extend deadline
     if (n.type === 'ranking_warning' || n.type === 'ranking_warning_acknowledged') {
+      // 1. Trích xuất metadata seriesId và chapterId từ nội dung thông báo
+      let seriesId = null;
+      let chapterId = null;
+      if (n.content && n.content.includes('[meta:')) {
+        const metaMatch = n.content.match(/\[meta:([^:]+):([^\]]+)\]/);
+        if (metaMatch) {
+          seriesId = metaMatch[1];
+          chapterId = metaMatch[2];
+        }
+      }
+      
       let seriesTitle = '';
       let proposalType = '';
       
-      if (n.title.includes('Deadline:')) {
+      if (n.title && n.title.includes('Deadline:')) {
         const seriesTitleMatch = n.title.match(/Deadline:\s*(.*)/);
         if (seriesTitleMatch) {
           seriesTitle = seriesTitleMatch[1].trim();
           proposalType = 'DEADLINE_REMINDER';
         }
-      } else if (n.title.includes('Cảnh báo xếp hạng series:')) {
+      } else if (n.title && n.title.includes('Cảnh báo xếp hạng series:')) {
         const seriesTitleMatch = n.title.match(/Cảnh báo xếp hạng series:\s*(.*)/);
         if (seriesTitleMatch) {
           seriesTitle = seriesTitleMatch[1].trim();
           proposalType = 'RECOVERY';
         }
       }
+
+      if (!seriesTitle && n.content && n.content.includes('của bộ truyện')) {
+        const match = n.content.match(/của bộ truyện\s+["']([^"']+)["']/);
+        if (match) {
+          seriesTitle = match[1];
+        }
+      }
+      if (!proposalType && n.title && n.title.includes('Cảnh báo')) {
+        const typeMatch = n.title.match(/Cảnh báo\s+([^\-]+)/);
+        if (typeMatch) {
+          proposalType = typeMatch[1].trim();
+        }
+      }
       
-      if (seriesTitle && proposalType) {
+      // 2. Thực hiện tự động gia hạn thêm 7 ngày từ thời điểm hiện tại
+      if (seriesId && chapterId) {
+        const newDeadline = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        const scheduleStorage = require('../../utils/scheduleStorage');
+        scheduleStorage.setChapterExtension(seriesId, chapterId, newDeadline.toISOString());
+        console.log(`[Extension] Automatically extended chapter ${chapterId} to ${newDeadline.toISOString()}`);
+      }
+      
+      // 3. Nếu tìm thấy seriesId trực tiếp từ metadata
+      if (seriesId) {
+        // Lấy danh sách Tantou Editor của bộ truyện để gửi thông báo
+        const { data: members } = await supabase.from('series_member').select('user_id').eq('series_id', seriesId).eq('role_in_series', 'editor');
+        if (members && members.length > 0) {
+          for (const m of members) {
+            await emitCreateNotification(
+              m.user_id,
+              'Mangaka đã xác nhận rủi ro',
+              `Tác giả đã xác nhận thông tin: ${n.title}`,
+              'SYSTEM'
+            );
+          }
+        }
+        
+        // Cập nhật trạng thái đề xuất duyệt (proposal) sang APPROVED trong mock store
+        if (seriesTitle && proposalType) {
+          editorMockStore.updateProposalStatusBySeriesTitle(seriesTitle, proposalType, 'APPROVED');
+          console.log(`Updated proposal status for ${seriesTitle} (${proposalType}) to APPROVED`);
+        }
+      } else if (seriesTitle && proposalType) {
+        // Fallback: Tìm kiếm series dựa theo tiêu đề nếu không có metadata trực tiếp
         const { data: seriesList } = await supabase.from('series').select('series_id').eq('title', seriesTitle);
         if (seriesList && seriesList.length > 0) {
-          const seriesId = seriesList[0].series_id;
-          const { data: members } = await supabase.from('series_member').select('user_id').eq('series_id', seriesId).eq('role_in_series', 'editor');
+          const sId = seriesList[0].series_id;
+          const { data: members } = await supabase.from('series_member').select('user_id').eq('series_id', sId).eq('role_in_series', 'editor');
           if (members && members.length > 0) {
             for (const m of members) {
               await emitCreateNotification(
@@ -102,7 +155,6 @@ const acknowledgeNotification = async (req, res, next) => {
             }
           }
           
-          // Update the proposal status in editor mock store
           editorMockStore.updateProposalStatusBySeriesTitle(seriesTitle, proposalType, 'APPROVED');
           console.log(`Updated proposal status for ${seriesTitle} (${proposalType}) to APPROVED`);
         }

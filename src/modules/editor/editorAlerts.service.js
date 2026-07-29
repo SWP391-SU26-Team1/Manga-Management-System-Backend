@@ -77,6 +77,16 @@ const resolveAlert = async (alertId, editorId) => {
       }
     } else if (alertId.startsWith("virtual_chapter_overdue_")) {
       seriesId = alertId.replace("virtual_chapter_overdue_", "");
+    } else if (alertId.startsWith("chapter_overdue_")) {
+      const chapterId = alertId.replace("chapter_overdue_", "");
+      const { data: chapData } = await supabase
+        .from('chapter')
+        .select('series_id')
+        .eq('chapter_id', chapterId)
+        .single();
+      if (chapData?.series_id) {
+        seriesId = chapData.series_id;
+      }
     }
 
     if (seriesId) {
@@ -186,11 +196,11 @@ const listAlerts = async ({ type, editorId }) => {
     
   const allChapters = chapters || [];
 
-  // Filter unpublished series and their chapters to check for task overdue alerts
-  const seriesList = allSeriesList.filter(s => s.status !== 'published');
+  // Check for task overdue alerts in all series (both published and unpublished)
+  const seriesList = allSeriesList;
   const seriesIds = seriesList.map(s => s.series_id);
-  const unpublishedChaps = allChapters.filter(c => seriesIds.includes(c.series_id));
-  const chapterIds = unpublishedChaps.map(c => c.chapter_id);
+  const chapsToCheck = allChapters;
+  const chapterIds = chapsToCheck.map(c => c.chapter_id);
 
   // 3. Fetch overdue tasks
   if (chapterIds.length > 0) {
@@ -236,6 +246,80 @@ const listAlerts = async ({ type, editorId }) => {
           });
         }
       }
+    }
+  }
+
+  // 3.1. Check for overdue chapters directly (e.g. chapters with 0 pages or no page tasks that are past their deadline)
+  const currentNow = new Date();
+  for (const chap of allChapters) {
+    const statusLower = String(chap.status || '').toLowerCase();
+    // Bỏ qua nếu chương đã hoàn thành hoặc đã xuất bản/xóa/ẩn
+    if (['approved', 'completed', 'published', 'archived', 'hidden', 'banned', 'deleted'].includes(statusLower)) {
+      continue;
+    }
+    const series = allSeriesList.find(s => s.series_id === chap.series_id);
+    if (!series) continue;
+    const seriesChapters = allChapters.filter(c => c.series_id === chap.series_id);
+    const publishedChaps = seriesChapters.filter(c => 
+      ['approved', 'completed', 'published'].includes(String(c.status || '').toLowerCase())
+    );
+    let latestPublishedChap = null;
+    if (publishedChaps.length > 0) {
+      publishedChaps.sort((a, b) => (b.chapter_number || 0) - (a.chapter_number || 0));
+      latestPublishedChap = publishedChaps[0];
+    }
+    let baselineDate = null;
+    let chapNumDiff = 0;
+    // Lấy ngày mốc (baseline date) để bắt đầu tính thời hạn nộp chương mới
+    if (latestPublishedChap) {
+      baselineDate = new Date(latestPublishedChap.publish_date || latestPublishedChap.created_at || latestPublishedChap.updated_at);
+      chapNumDiff = (chap.chapter_number || 1) - (latestPublishedChap.chapter_number || 0);
+    } else {
+      // Nếu chưa có chương nào được duyệt/xuất bản, tính từ ngày dự kiến bắt đầu hoặc ngày tạo series
+      const proposedStartDate = scheduleStorage.getSeriesProposedStartDate(series.series_id);
+      const proposedStr = proposedStartDate || series.created_at;
+      if (proposedStr) {
+        baselineDate = new Date(proposedStr);
+        chapNumDiff = (chap.chapter_number || 1) - 1;
+      }
+    }
+    if (!baselineDate || isNaN(baselineDate.getTime())) continue;
+    // Xác định khoảng cách ngày theo lịch phát hành truyện (Weekly: 7 ngày, Bi-weekly: 14 ngày, Monthly: 30 ngày)
+    const schedule = scheduleStorage.getSeriesSchedule(series.series_id) || "Weekly";
+    let intervalDays = 7;
+    if (schedule.includes('Bi-weekly') || schedule.includes('bi-weekly')) intervalDays = 14;
+    else if (schedule.includes('Monthly') || schedule.includes('monthly')) intervalDays = 30;
+    // Tính toán ngày hạn nộp lý thuyết
+    let chapterDeadlineDate = new Date(baselineDate.getTime() + chapNumDiff * intervalDays * 24 * 60 * 60 * 1000);
+    
+    // Nếu có đăng ký gia hạn thêm từ scheduleStorage, áp dụng hạn nộp mới
+    const extensionDateStr = scheduleStorage.getChapterExtension ? scheduleStorage.getChapterExtension(chap.chapter_id) : null;
+    if (extensionDateStr) {
+      const extDate = new Date(extensionDateStr);
+      if (!isNaN(extDate.getTime())) {
+        chapterDeadlineDate = extDate;
+      }
+    }
+    // Nếu thời gian hiện tại đã vượt quá hạn nộp, tiến hành tạo cảnh báo CRITICAL
+    if (currentNow > chapterDeadlineDate) {
+      const daysLate = Math.floor((currentNow - chapterDeadlineDate) / (1000 * 60 * 60 * 24));
+      const alertId = `chapter_overdue_${chap.chapter_id}`;
+      
+      // Bỏ qua nếu chương này đã có cảnh báo liên quan đến task trễ hạn
+      const hasTaskOverdueAlert = alerts.some(a => a.alert_id.startsWith("task_overdue_") && a.detail.includes(`'${chap.title}'`));
+      if (hasTaskOverdueAlert) continue;
+      alerts.push({
+        alert_id: alertId,
+        type: "CRITICAL",
+        title: "Trễ Deadline Bản Thảo",
+        series_id: series.series_id,
+        series_title: series.title,
+        detail: `Bản thảo chương '${chap.title}' đã quá hạn nộp vào ${chapterDeadlineDate.toLocaleDateString("vi-VN")}. Vui lòng nhắc nhở tác giả ngay!`,
+        time: chapterDeadlineDate.toISOString(),
+        action: "Nhắc nhở Mangaka",
+        action_path: `/dashboard/tantou-editor/series-defense?tab=deadline&series=${encodeURIComponent(series.title)}&chapter=${encodeURIComponent(chap.title)}&msg=late&daysLate=${daysLate}`,
+        is_resolved: false
+      });
     }
   }
 
@@ -291,7 +375,7 @@ const listAlerts = async ({ type, editorId }) => {
       if (publishedChaps.length > 0) {
         publishedChaps.sort((a, b) => (b.chapter_number || 0) - (a.chapter_number || 0));
         const latest = publishedChaps[0];
-        lastUpdate = new Date(latest.created_at || latest.updated_at);
+        lastUpdate = new Date(latest.publish_date || latest.created_at || latest.updated_at);
         latestChapNum = latest.chapter_number || 0;
       }
       
@@ -303,7 +387,14 @@ const listAlerts = async ({ type, editorId }) => {
       if (schedule.includes('Bi-weekly')) intervalDays = 14;
       else if (schedule.includes('Monthly')) intervalDays = 30;
       
-      const virtualDeadlineDate = new Date(lastUpdate.getTime() + intervalDays * 24 * 60 * 60 * 1000);
+      let virtualDeadlineDate = new Date(lastUpdate.getTime() + intervalDays * 24 * 60 * 60 * 1000);
+      const extensionDateStr = scheduleStorage.getChapterExtension ? scheduleStorage.getChapterExtension(`virtual_${series.series_id}`) : null;
+      if (extensionDateStr) {
+        const extDate = new Date(extensionDateStr);
+        if (!isNaN(extDate.getTime())) {
+          virtualDeadlineDate = extDate;
+        }
+      }
       
       if (now > virtualDeadlineDate) {
         const daysLate = Math.floor((now - virtualDeadlineDate) / (1000 * 60 * 60 * 24));
