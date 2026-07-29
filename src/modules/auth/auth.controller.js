@@ -46,6 +46,7 @@ const loginWithGoogle = async (req, res, next) => {
         return next(new AppError("Either idToken or code is required", 400));
       }
     } catch (err) {
+      console.error("[auth] Google Login Error:", err);
       if (err instanceof AppError) {
         return next(err);
       }
