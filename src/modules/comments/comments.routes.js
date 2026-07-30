@@ -12,5 +12,6 @@ router.post(
   validate(v.createCommentSchema),
   controller.createComment,
 );
+router.delete("/:commentId", authenticateToken, controller.deleteComment);
 
 module.exports = router;

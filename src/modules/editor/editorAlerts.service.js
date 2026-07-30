@@ -113,7 +113,7 @@ const resolveAlert = async (alertId, editorId) => {
         .select('user_id')
         .eq('series_id', seriesId)
         .eq('role_in_series', 'owner');
-        
+
       if (members && members.length > 0) {
         const mangakaIds = members.map(m => m.user_id);
         // Delete all notifications for these Mangaka users that are related to this series
@@ -122,7 +122,7 @@ const resolveAlert = async (alertId, editorId) => {
           .delete()
           .in('user_id', mangakaIds)
           .in('type', ['ranking_warning', 'ranking_warning_acknowledged']);
-          
+
         if (delErr) {
           console.error(`Failed to delete Mangaka warning notifications:`, delErr.message);
         } else {
@@ -137,7 +137,7 @@ const resolveAlert = async (alertId, editorId) => {
   // If this is a task overdue alert, extend the task deadline and reset status if not completed
   if (alertId && alertId.startsWith("task_overdue_")) {
     const taskId = alertId.replace("task_overdue_", "");
-    
+
     const { data: taskData } = await supabase
       .from("page_task")
       .select("status")
@@ -148,15 +148,15 @@ const resolveAlert = async (alertId, editorId) => {
       // Calculate new deadline: today + 7 days
       const newDeadline = new Date();
       newDeadline.setDate(newDeadline.getDate() + 7);
-      
+
       const { error } = await supabase
         .from("page_task")
-        .update({ 
+        .update({
           deadline: newDeadline.toISOString(),
-          status: "in_progress" 
+          status: "in_progress"
         })
         .eq("task_id", taskId);
-        
+
       if (error) {
         console.error("Failed to extend task deadline on resolveAlert:", error.message);
       } else {
@@ -183,7 +183,7 @@ const listAlerts = async ({ type, editorId }) => {
     .eq("role_in_series", "editor");
 
   if (memErr || !members || members.length === 0) return [];
-  
+
   const allSeriesList = members.map(m => m.series).filter(s => s != null);
   if (allSeriesList.length === 0) return [];
   const allSeriesIds = allSeriesList.map(s => s.series_id);
@@ -193,7 +193,7 @@ const listAlerts = async ({ type, editorId }) => {
     .from("chapter")
     .select("chapter_id, title, series_id, created_at, status, chapter_number")
     .in("series_id", allSeriesIds);
-    
+
   const allChapters = chapters || [];
 
   // Check for task overdue alerts in all series (both published and unpublished)
@@ -228,7 +228,7 @@ const listAlerts = async ({ type, editorId }) => {
           // If chapter is completed/published, don't alert on its tasks
           if (!chap || ['completed', 'published'].includes(chap.status.toLowerCase())) continue;
           const series = seriesList.find(s => s.series_id === chap.series_id);
-          
+
           const daysLate = Math.floor((new Date() - new Date(task.deadline)) / (1000 * 60 * 60 * 24));
           const alertId = `task_overdue_${task.task_id}`;
           console.log('Pushing alert for:', chap.title, alertId);
@@ -260,7 +260,7 @@ const listAlerts = async ({ type, editorId }) => {
     const series = allSeriesList.find(s => s.series_id === chap.series_id);
     if (!series) continue;
     const seriesChapters = allChapters.filter(c => c.series_id === chap.series_id);
-    const publishedChaps = seriesChapters.filter(c => 
+    const publishedChaps = seriesChapters.filter(c =>
       ['approved', 'completed', 'published'].includes(String(c.status || '').toLowerCase())
     );
     let latestPublishedChap = null;
@@ -291,7 +291,7 @@ const listAlerts = async ({ type, editorId }) => {
     else if (schedule.includes('Monthly') || schedule.includes('monthly')) intervalDays = 30;
     // Tính toán ngày hạn nộp lý thuyết
     let chapterDeadlineDate = new Date(baselineDate.getTime() + chapNumDiff * intervalDays * 24 * 60 * 60 * 1000);
-    
+
     // Nếu có đăng ký gia hạn thêm từ scheduleStorage, áp dụng hạn nộp mới
     const extensionDateStr = scheduleStorage.getChapterExtension ? scheduleStorage.getChapterExtension(chap.chapter_id) : null;
     if (extensionDateStr) {
@@ -304,7 +304,7 @@ const listAlerts = async ({ type, editorId }) => {
     if (currentNow > chapterDeadlineDate) {
       const daysLate = Math.floor((currentNow - chapterDeadlineDate) / (1000 * 60 * 60 * 24));
       const alertId = `chapter_overdue_${chap.chapter_id}`;
-      
+
       // Bỏ qua nếu chương này đã có cảnh báo liên quan đến task trễ hạn
       const hasTaskOverdueAlert = alerts.some(a => a.alert_id.startsWith("task_overdue_") && a.detail.includes(`'${chap.title}'`));
       if (hasTaskOverdueAlert) continue;
@@ -449,15 +449,15 @@ const listAlerts = async ({ type, editorId }) => {
       .from("series_ranking")
       .select("*, ranking_period:period_id(start_date)")
       .eq("series_id", series.series_id);
-      
+
     if (!rankErr && rankHistory && rankHistory.length >= 2) {
       // Sort by period start_date descending
       rankHistory.sort((a, b) => new Date(b.ranking_period?.start_date) - new Date(a.ranking_period?.start_date));
-      
+
       const currentRank = rankHistory[0].rank_position;
       const prevRank = rankHistory[1].rank_position;
       const dropAmount = currentRank - prevRank;
-      
+
       if (dropAmount >= 5) {
         const alertId = `rank_drop_${series.series_id}`;
         alerts.push({
@@ -490,7 +490,7 @@ const listAlerts = async ({ type, editorId }) => {
         .eq('user_id', editorId)
         .eq('type', alert.alert_id)
         .limit(1);
-        
+
       if (!existing || existing.length === 0) {
         await supabase.from('notification').insert({
           user_id: editorId,
@@ -506,15 +506,15 @@ const listAlerts = async ({ type, editorId }) => {
       console.error(`Failed to sync notification for alert ${alert.alert_id}:`, e.message);
     }
   }
-  
+
   if (type) {
     return finalAlerts.filter(a => a.type === type);
   }
-  
+
   // Sort by severity (CRITICAL > HIGH > WARNING > MEDIUM)
   const severityOrder = { "CRITICAL": 0, "HIGH": 1, "WARNING": 2, "MEDIUM": 3 };
   finalAlerts.sort((a, b) => severityOrder[a.type] - severityOrder[b.type]);
-  
+
   return finalAlerts;
 };
 

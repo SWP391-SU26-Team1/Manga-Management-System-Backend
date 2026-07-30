@@ -42,4 +42,17 @@ const listComments = async (req, res, next) => {
   }
 };
 
-module.exports = { createComment, listComments };
+const deleteComment = async (req, res, next) => {
+  try {
+    await commentsService.deleteComment({
+      commentId: req.params.commentId,
+      userId: req.user.user_id,
+      userRole: req.user.role,
+    });
+    return sendSuccess(res, 200, null, "Comment deleted successfully");
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { createComment, listComments, deleteComment };

@@ -2,6 +2,7 @@ const sessionsRepo = require('./reviewSessions.repository');
 const seriesRepo = require('../series/series.repository');
 const chaptersRepo = require('../chapters/chapters.repository');
 const usersRepo = require('../users/users.repository');
+const notificationsRepo = require('../notifications/notifications.repository');
 const AppError = require('../../utils/appError');
 
 const WORKFLOW = {
@@ -60,7 +61,35 @@ const performWorkflow = async (sessionId, action) => {
   const update = { status: rule.to };
   if (rule.setStartedAt) update.started_at = new Date().toISOString();
   if (rule.setEndedAt) update.ended_at = new Date().toISOString();
-  return sessionsRepo.update(sessionId, update);
+
+  const updatedSession = await sessionsRepo.update(sessionId, update);
+
+  if (action === 'start') {
+    try {
+      const { data: boardUsers } = await usersRepo.findAll({ role: 'board', limit: 1000, offset: 0 });
+      if (boardUsers && boardUsers.length > 0) {
+        const title = 'Session Review: Bắt Đầu / Tiếp Tục';
+        const sessionName = session.name || `Session #${sessionId}`;
+        const content = `Phiên review "${sessionName}" đã được bắt đầu / tiếp tục.`;
+
+        await Promise.all(
+          boardUsers.map((boardUser) =>
+            notificationsRepo.create({
+              user_id: boardUser.user_id,
+              title,
+              content,
+              type: 'review_session',
+              is_read: false,
+            })
+          )
+        );
+      }
+    } catch (err) {
+      console.error('Failed to notify board members:', err);
+    }
+  }
+
+  return updatedSession;
 };
 
 const deleteSession = async (sessionId) => {

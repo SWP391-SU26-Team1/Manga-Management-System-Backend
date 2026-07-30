@@ -30,7 +30,6 @@ const listCommentsByChapter = async ({ chapterId, offset, limit }) => {
       count: "exact",
     })
     .eq("chapter_id", chapterId)
-    .is("parent_comment_id", null)
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
@@ -47,7 +46,6 @@ const listCommentsBySeries = async ({ seriesId, offset, limit }) => {
       chapter!inner (series_id, chapter_number, title)
     `, { count: "exact" })
     .eq("chapter.series_id", seriesId)
-    .is("parent_comment_id", null)
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
@@ -55,4 +53,30 @@ const listCommentsBySeries = async ({ seriesId, offset, limit }) => {
   return { data, total: count };
 };
 
-module.exports = { createComment, listCommentsByChapter, listCommentsBySeries };
+const findById = async (commentId) => {
+  const { data, error } = await supabase
+    .from("comment")
+    .select("*")
+    .eq("comment_id", commentId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+};
+
+const deleteById = async (commentId) => {
+  const { error } = await supabase
+    .from("comment")
+    .delete()
+    .eq("comment_id", commentId);
+
+  if (error) throw error;
+};
+
+module.exports = {
+  createComment,
+  listCommentsByChapter,
+  listCommentsBySeries,
+  findById,
+  deleteById,
+};

@@ -30,4 +30,25 @@ const listCommentsBySeries = async ({ seriesId, page, limit, offset }) => {
   return commentsRepo.listCommentsBySeries({ seriesId, offset, limit });
 };
 
-module.exports = { createComment, listComments, listCommentsBySeries };
+const deleteComment = async ({ commentId, userId, userRole }) => {
+  if (!commentId) throw new AppError("commentId is required", 400);
+
+  const comment = await commentsRepo.findById(commentId);
+  if (!comment) throw new AppError("Comment not found", 404);
+
+  if (comment.user_id !== userId && userRole !== "admin") {
+    throw new AppError(
+      "Forbidden: You do not have permission to delete this comment",
+      403
+    );
+  }
+
+  await commentsRepo.deleteById(commentId);
+};
+
+module.exports = {
+  createComment,
+  listComments,
+  listCommentsBySeries,
+  deleteComment,
+};
